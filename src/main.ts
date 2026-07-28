@@ -16,17 +16,18 @@ async function bootstrap() {
   app.use(helmet());
 
   // CORS
-  app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      'https://riec-frontend.onrender.com',
-      'https://riec.rw',
-      'https://www.riec.rw',
-      ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
-    ],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
-  });
+ app.enableCors({
+  origin: [
+    'http://localhost:5173',
+    'https://riec-frontend-4ox4.onrender.com',
+    'https://riec-frontend.onrender.com',
+    'https://riec.rw',
+    'https://www.riec.rw',
+    ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
+  ],
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  credentials: true,
+});
 
   // Global validation pipe
   app.useGlobalPipes(
