@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RIEC Ltd. — API Server</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       RESET & BASE
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red:    #E11B25;
+      --orange: #EE7A18;
+      --dark:   #0D0E10;
+      --panel:  #13161A;
+      --border: #1F2329;
+      --muted:  #6B7280;
+      --white:  #FFFFFF;
+      --green:  #22c55e;
+
+      --grad: linear-gradient(100deg, #E11B25 0%, #EB521C 55%, #EE7A18 100%);
+      --grad-btn: linear-gradient(130deg, #E11B25, #EE7A18);
+
+      --radius-sm: 0.5rem;
+      --radius-md: 0.75rem;
+      --radius-lg: 1rem;
+      --radius-xl: 1.25rem;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--dark);
+      color: var(--white);
+      font-family: 'Poppins', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      /* Dot grid background */
+      background-image: radial-gradient(circle, #1E2229 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    a { text-decoration: none; color: inherit; }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       KEYFRAMES
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scan {
+      from { top: -2px; }
+      to   { top: 100%; }
+    }
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45); }
+      50%       { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       REUSABLE HELPERS
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .text-gradient {
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(225, 27, 37, 0.18);
+      border-radius: var(--radius-xl);
+      box-shadow:
+        inset 0 0 0 1px rgba(238, 122, 24, 0.04),
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 24px rgba(225, 27, 37, 0.05);
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+      animation: pulse-green 2.2s ease infinite;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0 0.75rem;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       HERO SECTION
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* Scan line */
+    .hero::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(238, 122, 24, 0) 15%,
+        rgba(238, 122, 24, 0.35) 50%,
+        rgba(238, 122, 24, 0) 85%,
+        transparent 100%
+      );
+      animation: scan 4s linear infinite;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .hero__bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .hero__img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      opacity: 0.50;
+      mask-image: linear-gradient(to left, rgba(0,0,0,0.55) 0%, transparent 58%);
+      -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.55) 0%, transparent 58%);
+    }
+
+    .hero__scrim {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to right,
+        #0D0E10 38%,
+        rgba(13, 14, 16, 0.88) 56%,
+        rgba(13, 14, 16, 0.12) 100%
+      );
+    }
+
+    .hero__content {
+      position: relative;
+      z-index: 20;
+      width: 100%;
+      max-width: 80rem;
+      margin: 0 auto;
+      padding: 7rem 1.5rem;
+    }
+
+    /* Brand bar */
+    .brand-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 3rem;
+      animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) both;
+    }
+
+    .brand-name {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .brand-sep {
+      height: 0.875rem;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .brand-status {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--green);
+    }
+
+    /* Headline */
+    .hero__headline {
+      font-size: clamp(3rem, 8vw, 5.5rem);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.25rem;
+      animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 80ms both;
+    }
+
+    .hero__sub {
+      font-size: 1rem;
+      color: var(--muted);
+      max-width: 22rem;
+      line-height: 1.75;
+      margin-bottom: 2.5rem;
+      animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 160ms both;
+    }
+
+    /* Connection card */
+    .conn-card {
+      max-width: 28rem;
+      padding: 1.25rem;
+      margin-bottom: 1.75rem;
+      animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 240ms both;
+    }
+
+    .conn-card__label {
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .endpoint-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      border-radius: var(--radius-sm);
+      transition: background 0.18s ease;
+    }
+
+    .endpoint-row:hover { background: rgba(238, 122, 24, 0.05); }
+
+    .endpoint-row__left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 0;
+    }
+
+    .endpoint-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .endpoint-dot--orange { background: var(--orange); }
+    .endpoint-dot--red    { background: var(--red); }
+
+    .endpoint-row__meta { min-width: 0; }
+
+    .endpoint-row__title {
+      font-size: 0.6rem;
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 0.125rem;
+    }
+
+    .endpoint-row__url {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--white);
+      font-family: 'Courier New', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Copy button */
+    .copy-btn {
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.68rem;
+      padding: 3px 9px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: color 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .copy-btn:hover  { color: var(--white); border-color: rgba(238, 122, 24, 0.45); }
+    .copy-btn:active { transform: scale(0.91); }
+    .copy-btn.copied { color: var(--green); border-color: rgba(34, 197, 94, 0.35); }
+
+    /* CTA buttons */
+    .cta-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 320ms both;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: 'Poppins', sans-serif;
+      cursor: pointer;
+      transition: opacity 0.2s, box-shadow 0.2s, transform 0.15s;
+    }
+
+    .btn--primary {
+      background: var(--grad-btn);
+      color: var(--white);
+      border: none;
+      box-shadow: 0 4px 20px rgba(225, 27, 37, 0.28), inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+    .btn--primary:hover  { opacity: 0.9; box-shadow: 0 6px 28px rgba(225,27,37,0.38); transform: translateY(-1px); }
+    .btn--primary:active { transform: translateY(0); }
+
+    .btn--secondary {
+      background: transparent;
+      color: var(--white);
+      border: 1px solid var(--border);
+      font-weight: 500;
+    }
+    .btn--secondary:hover  { border-color: rgba(238,122,24,0.45); background: rgba(255,255,255,0.04); transform: translateY(-1px); }
+    .btn--secondary:active { transform: translateY(0); }
+
+    .btn svg {
+      width: 1rem;
+      height: 1rem;
+      transition: transform 0.2s ease;
+    }
+    .btn--primary:hover svg { transform: rotate(6deg); }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       INFO CARDS SECTION
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .info-section {
+      border-top: 1px solid var(--border);
+    }
+
+    .info-section__inner {
+      max-width: 80rem;
+      margin: 0 auto;
+      padding: 5rem 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .info-section__inner { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .info-card {
+      padding: 1.5rem;
+      animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) both;
+    }
+
+    .info-card:nth-child(1) { animation-delay: 160ms; }
+    .info-card:nth-child(2) { animation-delay: 240ms; }
+    .info-card:nth-child(3) { animation-delay: 320ms; }
+
+    /* Red-orange accent bar */
+    .info-card::before {
+      content: '';
+      display: block;
+      height: 2px;
+      width: 2rem;
+      border-radius: 9999px;
+      background: var(--grad);
+      margin-bottom: 1.25rem;
+    }
+
+    .info-card__icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg,
+        rgba(225, 27, 37, 0.12) 0%,
+        rgba(238, 122, 24, 0.07) 100%
+      );
+    }
+
+    .info-card__icon svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      color: var(--orange);
+      stroke: var(--orange);
+    }
+
+    .info-card__title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 0.5rem;
+    }
+
+    .info-card__body {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .info-card__body code {
+      font-size: 0.75rem;
+      color: var(--orange);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1px 6px;
+      border-radius: 0.25rem;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       FOOTER
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .footer {
+      border-top: 1px solid var(--border);
+    }
+
+    .footer__inner {
+      max-width: 80rem;
+      margin: 0 auto;
+      padding: 1.75rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    @media (min-width: 640px) {
+      .footer__inner {
+        flex-direction: row;
+        justify-content: space-between;
+      }
+    }
+
+    .footer__brand {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+    }
+
+    .footer__copy {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .footer__meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .footer__sep {
+      height: 0.75rem;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .footer__env {
+      font-family: 'Courier New', monospace;
+      opacity: 0.6;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       RESPONSIVE HELPERS
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    @media (min-width: 640px) {
+      .hero__content { padding: 7rem 2.5rem; }
+      .hero__sub { font-size: 1.1rem; }
+    }
+
+    @media (min-width: 1024px) {
+      .hero__content { padding: 7rem 5rem; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ══════════════════════════════════════
+       HERO
+  ═══════════════════════════════════════════ -->
+  <section class="hero">
+
+    <div class="hero__bg">
+      <img src="/hero_img.png" alt="" aria-hidden="true" class="hero__img" />
+      <div class="hero__scrim"></div>
+    </div>
+
+    <div class="hero__content">
+
+      <!-- Brand bar -->
+      <div class="brand-bar">
+        <svg width="38" height="32" viewBox="0 0 36 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="RIEC Logo">
+          <path d="M1 10.589L12.2045 1H34.6136L23.7955 10.2055H34.6136L24.1818 19.0274H35L23.4091 29H1V10.589Z"
+                fill="url(#hero-grad)"/>
+          <defs>
+            <linearGradient id="hero-grad" x1="1" y1="15" x2="35" y2="15" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#E11B25"/>
+              <stop offset="0.31" stop-color="#E62823"/>
+              <stop offset="0.72" stop-color="#EB521C"/>
+              <stop offset="1"    stop-color="#EE7A18"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="brand-name">RIEC Ltd.</span>
+        <span class="brand-sep"></span>
+        <span class="brand-status">
+          <span class="status-dot"></span>
+          Server Online
+        </span>
+      </div>
+
+      <!-- Headline -->
+      <h1 class="hero__headline">
+        <span class="text-gradient">API</span><br/>
+        <span>Gateway</span>
+      </h1>
+
+      <p class="hero__sub">
+        Room of Innovation &amp; Engineering Construction —
+        backend services powering construction management across Rwanda.
+      </p>
+
+      <!-- Connection card -->
+      <div class="card conn-card">
+        <p class="conn-card__label">Connection Details</p>
+
+        <div class="endpoint-row">
+          <div class="endpoint-row__left">
+            <span class="endpoint-dot endpoint-dot--orange"></span>
+            <div class="endpoint-row__meta">
+              <p class="endpoint-row__title">Base URL</p>
+              <p id="base-url" class="endpoint-row__url"></p>
+            </div>
+          </div>
+          <button onclick="copyText('base-url', this)" class="copy-btn">Copy</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="endpoint-row">
+          <div class="endpoint-row__left">
+            <span class="endpoint-dot endpoint-dot--red"></span>
+            <div class="endpoint-row__meta">
+              <p class="endpoint-row__title">Swagger Docs</p>
+              <p id="swagger-url" class="endpoint-row__url"></p>
+            </div>
+          </div>
+          <button onclick="copyText('swagger-url', this)" class="copy-btn">Copy</button>
+        </div>
+      </div>
+
+      <!-- CTAs -->
+      <div class="cta-group">
+        <a href="/api/docs" class="btn btn--primary">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Swagger Docs
+        </a>
+        <a id="health-link" href="#" class="btn btn--secondary">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          Health Check
+        </a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       INFO CARDS
+  ═══════════════════════════════════════════ -->
+  <section class="info-section">
+    <div class="info-section__inner">
+
+      <div class="card info-card">
+        <div class="info-card__icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <h3 class="info-card__title">Authentication</h3>
+        <p class="info-card__body">
+          JWT Bearer token auth. Pass your token in the
+          <code>Authorization</code> header for all protected routes.
+        </p>
+      </div>
+
+      <div class="card info-card">
+        <div class="info-card__icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <h3 class="info-card__title">REST · OpenAPI 3.0</h3>
+        <p class="info-card__body">
+          All responses are JSON. Full schema definitions, request samples,
+          and response models available in the Swagger UI.
+        </p>
+      </div>
+
+      <div class="card info-card">
+        <div class="info-card__icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+          </svg>
+        </div>
+        <h3 class="info-card__title">Construction Suite</h3>
+        <p class="info-card__body">
+          Projects, BOQ, MEP estimating, invoicing &amp; site reporting —
+          purpose-built for Rwanda's construction sector.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       FOOTER
+  ═══════════════════════════════════════════ -->
+  <footer class="footer">
+    <div class="footer__inner">
+
+      <div class="footer__brand">
+        <svg width="20" height="17" viewBox="0 0 36 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 10.589L12.2045 1H34.6136L23.7955 10.2055H34.6136L24.1818 19.0274H35L23.4091 29H1V10.589Z"
+                fill="url(#footer-grad)"/>
+          <defs>
+            <linearGradient id="footer-grad" x1="1" y1="15" x2="35" y2="15" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#E11B25"/>
+              <stop offset="1" stop-color="#EE7A18"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="footer__copy">
+          RIEC Ltd. &copy; <span id="year"></span> &mdash; Kigali, Rwanda
+        </span>
+      </div>
+
+      <div class="footer__meta">
+        <span style="display:flex;align-items:center;gap:0.375rem;">
+          <span class="status-dot" style="width:6px;height:6px;"></span>
+          API v1
+        </span>
+        <span class="footer__sep"></span>
+        <span id="footer-env" class="footer__env"></span>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- ══════════════════════════════════════
+       SCRIPTS
+  ═══════════════════════════════════════════ -->
+  <script>
+    const API_PREFIX   = '/api';
+    const SWAGGER_PATH = '/api/docs';
+    const HEALTH_PATH  = '/api/health';
+    const origin       = window.location.origin;
+    const baseUrl      = origin + API_PREFIX;
+    const swaggerUrl   = origin + SWAGGER_PATH;
+    const healthUrl    = origin + HEALTH_PATH;
+
+    document.getElementById('base-url').textContent    = baseUrl;
+    document.getElementById('swagger-url').textContent = swaggerUrl;
+    document.getElementById('footer-env').textContent  = origin;
+    document.getElementById('swagger-link').href       = swaggerUrl;
+    document.getElementById('health-link').href        = healthUrl;
+    document.getElementById('year').textContent        = new Date().getFullYear();
+
+    function copyText(id, btn) {
+      const text = document.getElementById(id).textContent.trim();
+      navigator.clipboard.writeText(text).then(() => {
+        const prev = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.classList.remove('copied');
+        }, 1800);
+      }).catch(() => {
+        // Fallback for non-secure contexts
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        const prev = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.classList.remove('copied');
+        }, 1800);
+      });
+    }
+  </script>
+
+</body>
+</html>

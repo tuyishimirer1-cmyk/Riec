@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum JobApplicationStatus {
+  NEW
+  IN_REVIEW
+  SHORTLISTED
+  REJECTED
+  HIRED
+}
+
+enum PurchaseStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum ProjectDocumentType {
+  PRESENTATION
+  PERSPECTIVE
+  SITE_PLAN
+  ARCHITECTURAL_DRAWINGS
+  STRUCTURAL_DRAWINGS
+  MEP_DRAWINGS
+  GEOTECHNICAL_REPORT
+  TOPOGRAPHICAL_SURVEY
+  BILL_OF_QUANTITIES
+  BUDGET_ESTIMATE
+  ENVIRONMENTAL_IMPACT_ASSESSMENT
+  CONSTRUCTION_PERMIT
+  LAND_TITLE
+  SOIL_TEST_REPORT
+  MATERIAL_SPECIFICATIONS
+  TENDER_DOCUMENT
+  CONTRACT_AGREEMENT
+  PROJECT_SCHEDULE
+  METHOD_STATEMENT
+  QUALITY_CONTROL_PLAN
+  HEALTH_SAFETY_PLAN
+}
+
+enum ProjectType {
+  COMPLETED
+  PLAN_TO_BUY
+}
+
+enum ProjectCategory {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+}
+
+enum Role {
+  CLIENT
+  COMPANY_WORKER
+  ENGINEER
+  ADMIN
+}
+
+type ServiceTask {
+  title       String
+  description String
+}
+
+model User {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  email        String    @unique
+  passwordHash String?
+  firebaseUid  String?   @unique
+  role         Role      @default(CLIENT)
+  profileImg   String?   @default("")
+  coverImg     String?   @default("")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+
+  // relations
+  projectsOwned  Project[]           @relation("ProjectOwner")
+  uploadedAssets ProjectAsset[]      @relation("UploadedAssets")
+  assignments    ProjectAssignment[]
+  favorites      Favorite[]         @relation("UserFavorites")
+}
+
+model Service {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                String
+  slug                String   @unique
+  shortDescription    String
+  detailedDescription String?
+  order               Int      @default(0)
+
+  // new rich content fields
+  title       String  @default("")
+  description String  @default("")
+  process     String  @default("")
+  mainTasks   ServiceTask[]
+  isPublished Boolean @default(false)
+
+  // relations
+  images   ServiceImage[] @relation("ServiceImages")
+  projects ProjectService[] @relation("ServiceProjects")
+}
+
+model Project {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  slug          String          @unique
+  description   String
+  location      String
+  type          ProjectType     @default(COMPLETED)
+  category      ProjectCategory @default(RESIDENTIAL)
+  featured      Boolean         @default(false)
+  purchasable   Boolean         @default(false)
+  isPublished   Boolean         @default(false)
+  publishedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  youtubeVideoUrl String?
+
+  // relations
+  documentTypes ProjectDocumentType[]
+  images       ProjectImage[]      @relation("ProjectImages")
+  pricingTiers ProjectPriceTier[]  @relation("ProjectTiers")
+  assets       ProjectAsset[]      @relation("ProjectAssets")
+  purchases    Purchase[]          @relation("ProjectPurchases")
+  assignments  ProjectAssignment[]
+  services     ProjectService[]    @relation("ProjectServices")
+  ownerId      String?             @db.ObjectId
+  owner        User?               @relation("ProjectOwner", fields: [ownerId], references: [id])
+  favorites    Favorite[]          @relation("ProjectFavorites")
+}
+
+model ProjectService {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String   @db.ObjectId
+  serviceId String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  project Project @relation("ProjectServices", fields: [projectId], references: [id])
+  service Service @relation("ServiceProjects", fields: [serviceId], references: [id])
+
+  @@index([projectId])
+  @@index([serviceId])
+  @@unique([projectId, serviceId])
+}
+
+model ServiceImage {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  serviceId String  @db.ObjectId
+  service   Service @relation("ServiceImages", fields: [serviceId], references: [id])
+  s3Key     String
+  url       String
+  caption   String?
+  order     Int     @default(0)
+
+  @@index([serviceId])
+}
+
+model ProjectImage {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String  @db.ObjectId
+  project   Project @relation("ProjectImages", fields: [projectId], references: [id])
+  s3Key     String
+  url       String
+  caption   String?
+  order     Int     @default(0)
+
+  @@index([projectId])
+}
+
+model ProjectPriceTier {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  projectId   String  @db.ObjectId
+  project     Project @relation("ProjectTiers", fields: [projectId], references: [id])
+  name        String
+  description String?
+  currency    String
+  amount      Float
+  isActive    Boolean @default(true)
+
+  // back-relations
+  assets    ProjectAsset[] @relation("TierAssets")
+  purchases Purchase[]     @relation("TierPurchases")
+
+  @@index([projectId])
+}
+
+model ProjectAsset {
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String            @db.ObjectId
+  project   Project           @relation("ProjectAssets", fields: [projectId], references: [id])
+  tierId    String?           @db.ObjectId
+  tier      ProjectPriceTier? @relation("TierAssets", fields: [tierId], references: [id])
+
+  documentType ProjectDocumentType
+  version      String?
+
+  s3Key          String
+  filename       String
+  fileType       String
+  size           Int
+  isDownloadable Boolean @default(true)
+
+  uploadedById String? @db.ObjectId
+  uploadedBy   User?   @relation("UploadedAssets", fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([tierId])
+}
+
+model ProjectAssignment {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId  String   @db.ObjectId
+  project    Project  @relation(fields: [projectId], references: [id])
+  userId     String   @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id])
+  role       String?
+  assignedAt DateTime @default(now())
+
+  @@index([projectId])
+  @@index([userId])
+}
+
+model ContactSubmission {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String
+  phone     String?
+  company   String?
+  message   String
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+}
+
+model Job {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  slug             String   @unique
+  title            String
+  location         String
+  employmentType   String
+  department       String
+  description      String
+  requirements     String
+  responsibilities String
+  isPublished      Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  applications JobApplication[]
+}
+
+model JobApplication {
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  jobId       String               @db.ObjectId
+  job         Job                  @relation(fields: [jobId], references: [id])
+  fullName    String
+  email       String
+  phone       String?
+  cvS3Key     String?
+  cvUrl       String?
+  coverLetter String?
+  createdAt   DateTime             @default(now())
+  status      JobApplicationStatus @default(NEW)
+  notes       String?
+
+  @@index([jobId])
+}
+
+model Purchase {
+  id             String           @id @default(auto()) @map("_id") @db.ObjectId
+  projectId      String           @db.ObjectId
+  project        Project          @relation("ProjectPurchases", fields: [projectId], references: [id])
+  tierId         String           @db.ObjectId
+  tier           ProjectPriceTier @relation("TierPurchases", fields: [tierId], references: [id])
+  email          String
+  fullName       String
+  flutterwaveRef String
+  amount         Float
+  currency       String
+  status         PurchaseStatus   @default(PENDING)
+  downloadToken  String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([projectId])
+  @@index([tierId])
+}
+
+model Favorite {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  projectId String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  user    User    @relation("UserFavorites", fields: [userId], references: [id])
+  project Project @relation("ProjectFavorites", fields: [projectId], references: [id])
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
+}
