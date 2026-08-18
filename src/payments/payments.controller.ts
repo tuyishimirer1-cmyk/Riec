@@ -9,7 +9,7 @@ import {
   ApiProperty,
 } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
-import { IsEmail, IsString } from 'class-validator';
+import { IsEmail, IsOptional, IsString } from 'class-validator';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
 
 class InitProjectCheckoutDto {
@@ -18,8 +18,13 @@ class InitProjectCheckoutDto {
   projectId: string;
 
   @IsString()
-  @ApiProperty({ example: '65f34e7e0a2b3c4d5e6f7000' })
-  tierId: string;
+  @IsOptional()
+  @ApiProperty({ 
+    example: '65f34e7e0a2b3c4d5e6f7000',
+    required: false,
+    description: 'Optional tier ID. If not provided, project basePrice will be used.'
+  })
+  tierId?: string;
 
   @IsEmail()
   @ApiProperty({ example: 'customer@example.com' })
@@ -63,9 +68,20 @@ export class PaymentsController {
   @Post('webhook/flutterwave')
   @ApiExcludeEndpoint()
   @ApiOperation({
-    summary: 'Flutterwave webhook handler',
+    summary: 'Flutterwave webhook handler (deprecated)',
     description:
-      'Internal webhook endpoint for receiving payment status updates from Flutterwave. This endpoint is excluded from public API documentation.',
+      'Legacy webhook endpoint for Flutterwave. Use /webhook/paypack instead.',
+  })
+  handleWebhookLegacy(@Body() body: any) {
+    return this.paymentsService.handleWebhook(body);
+  }
+
+  @Post('webhook/paypack')
+  @ApiExcludeEndpoint()
+  @ApiOperation({
+    summary: 'Paypack webhook handler',
+    description:
+      'Webhook endpoint for receiving payment status updates from Paypack. This endpoint is excluded from public API documentation.',
   })
   handleWebhook(@Body() body: any) {
     return this.paymentsService.handleWebhook(body);

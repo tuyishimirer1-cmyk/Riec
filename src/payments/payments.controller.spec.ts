@@ -4,7 +4,6 @@ import { PaymentsService } from './payments.service';
 
 describe('PaymentsController', () => {
   let controller: PaymentsController;
-  let service: PaymentsService;
 
   const mockService = {
     initProjectCheckout: jest.fn(),
@@ -26,7 +25,6 @@ describe('PaymentsController', () => {
     }).compile();
 
     controller = module.get<PaymentsController>(PaymentsController);
-    service = module.get<PaymentsService>(PaymentsService);
   });
 
   it('should be defined', () => {
@@ -35,31 +33,49 @@ describe('PaymentsController', () => {
 
   describe('initProjectCheckout', () => {
     it('should create checkout session', async () => {
-      mockService.initProjectCheckout.mockResolvedValue({ paymentLink: 'https://checkout' });
+      mockService.initProjectCheckout.mockResolvedValue({
+        link: 'https://checkout.paypack.rw/xyz',
+        ref: 'RIEC-123-456',
+      });
 
-      const result = await controller.initProjectCheckout({ projectId: '1', tierId: '1', email: 'test@test.com', fullName: 'Test' });
+      const result = await controller.initProjectCheckout({
+        projectId: '1',
+        tierId: '1',
+        email: 'test@test.com',
+        fullName: 'Test',
+      });
 
-      expect(result.paymentLink).toBe('https://checkout');
+      expect(result.link).toBe('https://checkout.paypack.rw/xyz');
+      expect(result.ref).toBe('RIEC-123-456');
     });
   });
 
   describe('handleWebhook', () => {
     it('should handle webhook', async () => {
-      mockService.handleWebhook.mockResolvedValue({ received: true });
+      mockService.handleWebhook.mockResolvedValue({ 
+        message: 'Webhook processed successfully' 
+      });
 
-      const result = await controller.handleWebhook({ data: {} });
+      const result = await controller.handleWebhook({ 
+        ref: 'RIEC-123-456',
+        status: 'successful',
+        merchant_ref: 'purchase123'
+      });
 
-      expect(result.received).toBe(true);
+      expect(result.message).toBe('Webhook processed successfully');
     });
   });
 
   describe('getDownloads', () => {
     it('should get downloads by token', async () => {
-      mockService.getDownloadsByToken.mockResolvedValue({ assets: [] });
+      mockService.getDownloadsByToken.mockResolvedValue([
+        { id: '1', filename: 'plan.pdf', documentType: 'ARCHITECTURAL_DRAWINGS' }
+      ]);
 
       const result = await controller.getDownloads('token123');
 
       expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 });

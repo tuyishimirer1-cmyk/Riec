@@ -38,7 +38,9 @@ describe('FavoritesController', () => {
     it('should add favorite', async () => {
       mockService.addFavorite.mockResolvedValue({ id: '1' });
 
-      const result = await controller.addFavorite('proj1', { user: { userId: 'u1' } } as any);
+      const result = await controller.addFavorite('proj1', {
+        user: { userId: 'u1' },
+      } as any);
 
       expect(result.id).toBe('1');
     });
@@ -46,9 +48,15 @@ describe('FavoritesController', () => {
 
   describe('getMyFavorites', () => {
     it('should return favorites list', async () => {
-      mockService.getUserFavorites.mockResolvedValue({ data: [], total: 0, meta: {} });
+      mockService.getUserFavorites.mockResolvedValue({
+        data: [],
+        total: 0,
+        meta: {},
+      });
 
-      const result = await controller.getMyFavorites({ user: { userId: 'u1' } } as any);
+      const result = await controller.getMyFavorites({
+        user: { userId: 'u1' },
+      } as any);
 
       expect(result).toBeDefined();
     });
@@ -58,7 +66,9 @@ describe('FavoritesController', () => {
     it('should check if favorite', async () => {
       mockService.checkIfFavorited.mockResolvedValue(true);
 
-      const result = await controller.checkFavorite('1', { user: { userId: 'u1' } } as any);
+      const result = await controller.checkFavorite('1', {
+        user: { userId: 'u1' },
+      } as any);
 
       expect(result.favorited).toBe(true);
     });

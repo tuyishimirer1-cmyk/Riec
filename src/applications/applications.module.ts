@@ -7,5 +7,3 @@ import { ApplicationsController } from './applications.controller';
   controllers: [ApplicationsController],
 })
 export class ApplicationsModule {}
-
-

@@ -40,9 +40,15 @@ describe('FavoritesService', () => {
 
   describe('addFavorite', () => {
     it('should toggle favorite', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue({ id: 'proj1', isPublished: true });
+      mockPrisma.project.findUnique.mockResolvedValue({
+        id: 'proj1',
+        isPublished: true,
+      });
       mockPrisma.favorite.findFirst.mockResolvedValue(null);
-      mockPrisma.favorite.create.mockResolvedValue({ id: '1', isFavorite: true });
+      mockPrisma.favorite.create.mockResolvedValue({
+        id: '1',
+        isFavorite: true,
+      });
 
       const result = await service.addFavorite('user1', 'proj1');
 
@@ -50,7 +56,10 @@ describe('FavoritesService', () => {
     });
 
     it('should remove favorite if exists', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue({ id: 'proj1', isPublished: true });
+      mockPrisma.project.findUnique.mockResolvedValue({
+        id: 'proj1',
+        isPublished: true,
+      });
       mockPrisma.favorite.findFirst.mockResolvedValue({ id: 'fav1' });
       mockPrisma.favorite.delete.mockResolvedValue({ id: 'fav1' });
 

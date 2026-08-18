@@ -30,7 +30,9 @@ describe('PaymentsService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    (axios.post as jest.Mock).mockResolvedValue({ data: { data: { link: 'http://test.link' } } });
+    (axios.post as jest.Mock).mockResolvedValue({
+      data: { data: { link: 'http://test.link' } },
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -53,7 +55,9 @@ describe('PaymentsService', () => {
       mockPrisma.project.findUnique.mockResolvedValue({
         id: 'proj1',
         purchasable: true,
-        pricingTiers: [{ id: 'tier1', amount: 100, currency: 'USD', isActive: true }],
+        pricingTiers: [
+          { id: 'tier1', amount: 100, currency: 'USD', isActive: true },
+        ],
       });
       mockPrisma.purchase.create.mockResolvedValue({ id: '1' });
       mockPrisma.purchase.update.mockResolvedValue({ id: '1' });
@@ -71,8 +75,14 @@ describe('PaymentsService', () => {
 
   describe('handleWebhook', () => {
     it('should handle successful payment', async () => {
-      mockPrisma.purchase.findFirst.mockResolvedValue({ id: '1', status: 'PENDING' });
-      mockPrisma.purchase.update.mockResolvedValue({ id: '1', status: 'SUCCESS' });
+      mockPrisma.purchase.findFirst.mockResolvedValue({
+        id: '1',
+        status: 'PENDING',
+      });
+      mockPrisma.purchase.update.mockResolvedValue({
+        id: '1',
+        status: 'SUCCESS',
+      });
 
       await service.handleWebhook({
         data: { tx_ref: 'test-ref', status: 'successful' },

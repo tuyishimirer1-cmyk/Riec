@@ -81,7 +81,9 @@ describe('ProjectImagesService', () => {
       mockPrisma.projectImage.findFirst.mockResolvedValue({ id: 'img1' });
       mockPrisma.projectImage.update.mockResolvedValue({ id: '1' });
 
-      const result = await service.update('proj1', 'img1', { caption: 'Updated' });
+      const result = await service.update('proj1', 'img1', {
+        caption: 'Updated',
+      });
 
       expect(result.id).toBe('1');
     });
@@ -90,7 +92,10 @@ describe('ProjectImagesService', () => {
   describe('remove', () => {
     it('should remove image', async () => {
       mockPrisma.project.findUnique.mockResolvedValue({ id: 'proj1' });
-      mockPrisma.projectImage.findFirst.mockResolvedValue({ id: 'img1', s3Key: 'key' });
+      mockPrisma.projectImage.findFirst.mockResolvedValue({
+        id: 'img1',
+        s3Key: 'key',
+      });
       mockPrisma.projectImage.delete.mockResolvedValue({ id: 'img1' });
 
       await service.remove('proj1', 'img1');

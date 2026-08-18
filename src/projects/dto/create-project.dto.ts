@@ -3,6 +3,7 @@ import {
   IsArray,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
@@ -63,4 +64,21 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   youtubeVideoUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 150000,
+    description: 'Base price for the project',
+  })
+  @IsOptional()
+  @IsNumber()
+  basePrice?: number;
+
+  @ApiPropertyOptional({
+    example: 'USD',
+    description: 'Currency code (USD, RWF, etc.)',
+    default: 'USD',
+  })
+  @IsOptional()
+  @IsString()
+  currency?: string;
 }

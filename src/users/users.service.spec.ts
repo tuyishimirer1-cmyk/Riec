@@ -68,7 +68,9 @@ describe('UsersService', () => {
     it('should update profile', async () => {
       mockPrisma.user.update.mockResolvedValue({ id: '1' });
 
-      const result = await service.updateUserProfile('1', { profileImg: 'new.jpg' });
+      const result = await service.updateUserProfile('1', {
+        profileImg: 'new.jpg',
+      });
 
       expect(result.id).toBe('1');
     });

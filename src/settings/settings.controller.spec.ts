@@ -81,7 +81,9 @@ describe('SettingsController', () => {
         data: { facebook: 'https://fb.com' },
       });
 
-      const result = controller.updateSocialLinks({ facebook: 'https://fb.com' });
+      const result = controller.updateSocialLinks({
+        facebook: 'https://fb.com',
+      });
 
       expect(result.statusCode).toBe(200);
     });

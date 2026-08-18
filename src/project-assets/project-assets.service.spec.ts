@@ -75,7 +75,10 @@ describe('ProjectAssetsService', () => {
   describe('remove', () => {
     it('should remove asset', async () => {
       mockPrisma.project.findUnique.mockResolvedValue({ id: 'proj1' });
-      mockPrisma.projectAsset.findFirst.mockResolvedValue({ id: 'asset1', s3Key: 'key' });
+      mockPrisma.projectAsset.findFirst.mockResolvedValue({
+        id: 'asset1',
+        s3Key: 'key',
+      });
       mockPrisma.projectAsset.delete.mockResolvedValue({ id: 'asset1' });
 
       await service.remove('proj1', 'asset1');

@@ -26,8 +26,12 @@ describe('ProjectPricingTiersController', () => {
       ],
     }).compile();
 
-    controller = module.get<ProjectPricingTiersController>(ProjectPricingTiersController);
-    service = module.get<ProjectPricingTiersService>(ProjectPricingTiersService);
+    controller = module.get<ProjectPricingTiersController>(
+      ProjectPricingTiersController,
+    );
+    service = module.get<ProjectPricingTiersService>(
+      ProjectPricingTiersService,
+    );
   });
 
   it('should be defined', () => {
@@ -58,7 +62,9 @@ describe('ProjectPricingTiersController', () => {
     it('should update pricing tier', async () => {
       mockService.update.mockResolvedValue({ id: '1' });
 
-      const result = await controller.update('proj1', 'tier1', { name: 'Updated' });
+      const result = await controller.update('proj1', 'tier1', {
+        name: 'Updated',
+      });
 
       expect(result.id).toBe('1');
     });

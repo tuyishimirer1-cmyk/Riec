@@ -59,7 +59,9 @@ describe('ServiceImagesController', () => {
     it('should update an image', async () => {
       mockService.update.mockResolvedValue({ caption: 'Updated' });
 
-      const result = await controller.update('proj1', 'img1', { caption: 'Updated' });
+      const result = await controller.update('proj1', 'img1', {
+        caption: 'Updated',
+      });
 
       expect(result.caption).toBe('Updated');
     });

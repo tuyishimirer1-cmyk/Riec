@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { S3Service } from '../s3/s3.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { paginate } from '../common/utils/pagination.util';
 import { ProjectDocumentType } from '@prisma/client';
@@ -15,7 +15,7 @@ import { ProjectDocumentType } from '@prisma/client';
 export class ProjectAssetsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly s3: S3Service,
+    private readonly cloudinary: CloudinaryService,
   ) {}
 
   private async findAssetOrFail(projectId: string, assetId: string) {
@@ -44,9 +44,9 @@ export class ProjectAssetsService {
 
     return Promise.all(
       files.map(async (file) => {
-        const s3Key = await this.s3.uploadFile(
+        const result = await this.cloudinary.uploadFile(
           file,
-          `projects/${projectId}/documents`,
+          `riec/projects/${projectId}/documents`,
         );
         return this.prisma.projectAsset.create({
           data: {
@@ -54,7 +54,7 @@ export class ProjectAssetsService {
             tierId: dto.tierId?.trim() || undefined,
             documentType: dto.documentType,
             version: dto.version?.trim() || undefined,
-            s3Key,
+            s3Key: result.publicId,
             filename: file.originalname,
             fileType: file.mimetype,
             size: file.size,
@@ -113,7 +113,7 @@ export class ProjectAssetsService {
 
   async remove(projectId: string, assetId: string) {
     const asset = await this.findAssetOrFail(projectId, assetId);
-    await this.s3.deleteFileByKey(asset.s3Key);
+    await this.cloudinary.deleteFile(asset.s3Key);
     await this.prisma.projectAsset.delete({ where: { id: assetId } });
   }
 
@@ -121,7 +121,7 @@ export class ProjectAssetsService {
     const asset = await this.findAssetOrFail(projectId, assetId);
     if (!asset.isDownloadable)
       throw new ForbiddenException('Asset is not downloadable');
-    const url = await this.s3.generatePrivateSignedUrl(asset.s3Key);
+    const url = await this.cloudinary.generateSignedUrl(asset.s3Key);
     return { url, filename: asset.filename, fileType: asset.fileType };
   }
 }

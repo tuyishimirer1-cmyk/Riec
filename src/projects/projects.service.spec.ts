@@ -59,7 +59,10 @@ describe('ProjectsService', () => {
   describe('create', () => {
     it('should create project with slug generation', async () => {
       mockPrisma.project.findUnique.mockResolvedValue(null);
-      mockPrisma.project.create.mockResolvedValue({ id: '1', slug: 'test-project' });
+      mockPrisma.project.create.mockResolvedValue({
+        id: '1',
+        slug: 'test-project',
+      });
 
       const result = await service.create({ title: 'Test Project' } as any);
 
@@ -98,7 +101,9 @@ describe('ProjectsService', () => {
 
   describe('findByIdentifier', () => {
     it('should find by ID', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue({ id: '507f1f77bcf86cd799439011' });
+      mockPrisma.project.findUnique.mockResolvedValue({
+        id: '507f1f77bcf86cd799439011',
+      });
 
       const result = await service.findByIdentifier('507f1f77bcf86cd799439011');
 
@@ -139,8 +144,14 @@ describe('ProjectsService', () => {
 
   describe('publish', () => {
     it('should publish project', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue({ id: '1', isPublished: false });
-      mockPrisma.project.update.mockResolvedValue({ id: '1', isPublished: true });
+      mockPrisma.project.findUnique.mockResolvedValue({
+        id: '1',
+        isPublished: false,
+      });
+      mockPrisma.project.update.mockResolvedValue({
+        id: '1',
+        isPublished: true,
+      });
 
       const result = await service.publish('1');
 
@@ -150,8 +161,14 @@ describe('ProjectsService', () => {
 
   describe('unpublish', () => {
     it('should unpublish project', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue({ id: '1', isPublished: true });
-      mockPrisma.project.update.mockResolvedValue({ id: '1', isPublished: false });
+      mockPrisma.project.findUnique.mockResolvedValue({
+        id: '1',
+        isPublished: true,
+      });
+      mockPrisma.project.update.mockResolvedValue({
+        id: '1',
+        isPublished: false,
+      });
 
       const result = await service.unpublish('1');
 
@@ -199,8 +216,14 @@ describe('ProjectsService', () => {
 
   describe('addYoutubeVideo', () => {
     it('should add youtube video', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue({ id: '1', type: 'COMPLETED' });
-      mockPrisma.project.update.mockResolvedValue({ id: '1', youtubeVideoUrl: 'https://youtube.com' });
+      mockPrisma.project.findUnique.mockResolvedValue({
+        id: '1',
+        type: 'COMPLETED',
+      });
+      mockPrisma.project.update.mockResolvedValue({
+        id: '1',
+        youtubeVideoUrl: 'https://youtube.com',
+      });
 
       const result = await service.addYoutubeVideo('1', 'https://youtube.com');
 
@@ -208,9 +231,14 @@ describe('ProjectsService', () => {
     });
 
     it('should throw for non-completed project', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue({ id: '1', type: 'PLAN_TO_BUY' });
+      mockPrisma.project.findUnique.mockResolvedValue({
+        id: '1',
+        type: 'PLAN_TO_BUY',
+      });
 
-      await expect(service.addYoutubeVideo('1', 'https://youtube.com')).rejects.toThrow();
+      await expect(
+        service.addYoutubeVideo('1', 'https://youtube.com'),
+      ).rejects.toThrow();
     });
   });
 });

@@ -66,7 +66,9 @@ describe('ProjectAssignmentsService', () => {
 
   describe('updateRole', () => {
     it('should update assignment', async () => {
-      mockPrisma.projectAssignment.findFirst.mockResolvedValue({ id: 'assign1' });
+      mockPrisma.projectAssignment.findFirst.mockResolvedValue({
+        id: 'assign1',
+      });
       mockPrisma.projectAssignment.update.mockResolvedValue({ id: '1' });
 
       const result = await service.updateRole('proj1', 'assign1', 'lead');
@@ -77,7 +79,9 @@ describe('ProjectAssignmentsService', () => {
 
   describe('unassign', () => {
     it('should remove assignment', async () => {
-      mockPrisma.projectAssignment.findFirst.mockResolvedValue({ id: 'assign1' });
+      mockPrisma.projectAssignment.findFirst.mockResolvedValue({
+        id: 'assign1',
+      });
       mockPrisma.projectAssignment.delete.mockResolvedValue({ id: 'assign1' });
 
       await service.unassign('proj1', 'assign1');

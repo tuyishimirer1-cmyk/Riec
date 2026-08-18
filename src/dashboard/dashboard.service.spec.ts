@@ -101,7 +101,9 @@ describe('DashboardService', () => {
 
       await service.getOverviewStats('all');
 
-      expect(mockPrisma.project.count).toHaveBeenNthCalledWith(1, { where: {} });
+      expect(mockPrisma.project.count).toHaveBeenNthCalledWith(1, {
+        where: {},
+      });
       expect(mockPrisma.job.count).toHaveBeenCalledWith({ where: {} });
       expect(mockPrisma.purchase.count).toHaveBeenCalledWith({ where: {} });
     });

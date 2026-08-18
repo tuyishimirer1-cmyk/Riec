@@ -30,7 +30,9 @@ describe('ProjectPricingTiersService', () => {
       ],
     }).compile();
 
-    service = module.get<ProjectPricingTiersService>(ProjectPricingTiersService);
+    service = module.get<ProjectPricingTiersService>(
+      ProjectPricingTiersService,
+    );
     prisma = module.get<PrismaService>(PrismaService);
   });
 
@@ -74,7 +76,9 @@ describe('ProjectPricingTiersService', () => {
       mockPrisma.projectPriceTier.findFirst.mockResolvedValue({ id: 'tier1' });
       mockPrisma.projectPriceTier.update.mockResolvedValue({ id: '1' });
 
-      const result = await service.update('proj1', 'tier1', { name: 'Updated' });
+      const result = await service.update('proj1', 'tier1', {
+        name: 'Updated',
+      });
 
       expect(result.id).toBe('1');
     });

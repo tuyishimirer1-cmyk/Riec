@@ -39,7 +39,10 @@ describe('AuthController', () => {
     it('should login user', async () => {
       mockAuthService.login.mockResolvedValue({ access_token: 'token' });
 
-      const result = await controller.login({ email: 'test@example.com', password: 'password' });
+      const result = await controller.login({
+        email: 'test@example.com',
+        password: 'password',
+      });
 
       expect(result.access_token).toBe('token');
     });

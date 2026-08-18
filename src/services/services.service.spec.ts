@@ -61,7 +61,9 @@ describe('ServicesService', () => {
 
   describe('findByIdentifier', () => {
     it('should find by ID', async () => {
-      mockPrisma.service.findUnique.mockResolvedValue({ id: '507f1f77bcf86cd799439011' });
+      mockPrisma.service.findUnique.mockResolvedValue({
+        id: '507f1f77bcf86cd799439011',
+      });
 
       const result = await service.findByIdentifier('507f1f77bcf86cd799439011');
 

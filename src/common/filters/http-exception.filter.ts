@@ -85,7 +85,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = 'Database connection timed out';
         errorData = {
           error: 'Service Unavailable',
-          details: 'The database is currently overloaded. Please try again shortly.',
+          details:
+            'The database is currently overloaded. Please try again shortly.',
         };
       } else if (error?.name === 'ValidationError') {
         statusCode = HttpStatus.BAD_REQUEST;

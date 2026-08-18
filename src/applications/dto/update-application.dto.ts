@@ -4,14 +4,16 @@ import { JobApplicationStatus } from '@prisma/client';
 
 export class UpdateApplicationDto {
   @IsEnum(JobApplicationStatus)
-  @ApiProperty({ 
+  @ApiProperty({
     enum: JobApplicationStatus,
-    example: JobApplicationStatus.IN_REVIEW 
+    example: JobApplicationStatus.IN_REVIEW,
   })
   status: JobApplicationStatus;
 
   @IsOptional()
   @IsString()
-  @ApiPropertyOptional({ example: 'Strong technical background, good fit for the role.' })
+  @ApiPropertyOptional({
+    example: 'Strong technical background, good fit for the role.',
+  })
   notes?: string;
 }

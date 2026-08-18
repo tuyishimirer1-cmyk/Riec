@@ -26,7 +26,9 @@ describe('ProjectAssignmentsController', () => {
       ],
     }).compile();
 
-    controller = module.get<ProjectAssignmentsController>(ProjectAssignmentsController);
+    controller = module.get<ProjectAssignmentsController>(
+      ProjectAssignmentsController,
+    );
     service = module.get<ProjectAssignmentsService>(ProjectAssignmentsService);
   });
 

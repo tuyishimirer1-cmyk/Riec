@@ -74,7 +74,10 @@ describe('ContactController', () => {
     });
 
     it('should throw error if email fails', async () => {
-      mockEmailService.sendQuoteEmail.mockResolvedValue({ success: false, error: 'Failed' });
+      mockEmailService.sendQuoteEmail.mockResolvedValue({
+        success: false,
+        error: 'Failed',
+      });
 
       await expect(
         controller.sendQuoteEmail({
@@ -102,7 +105,10 @@ describe('ContactController', () => {
 
   describe('markRead', () => {
     it('should mark submission as read', async () => {
-      mockPrisma.contactSubmission.update.mockResolvedValue({ id: '1', read: true });
+      mockPrisma.contactSubmission.update.mockResolvedValue({
+        id: '1',
+        read: true,
+      });
 
       const result = await controller.markRead('1');
 

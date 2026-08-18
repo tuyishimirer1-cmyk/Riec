@@ -17,7 +17,7 @@ describe('PrismaService', () => {
   });
 
   it('should be an instance of PrismaClient', () => {
-    expect(service.$connect).toBeDefined();
-    expect(service.$disconnect).toBeDefined();
+    expect(typeof service.$connect).toBe('function');
+    expect(typeof service.$disconnect).toBe('function');
   });
 });

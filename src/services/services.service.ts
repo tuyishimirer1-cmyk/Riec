@@ -86,12 +86,12 @@ export class ServicesService {
       if (service) return service;
     }
 
-// If not found by ID or doesn't look like an ID, try by slug
-      const trimmedIdentifier = identifier.trim();
-      const service = await this.prisma.service.findUnique({
-        where: { slug: trimmedIdentifier },
-        include: includeRelations,
-      });
+    // If not found by ID or doesn't look like an ID, try by slug
+    const trimmedIdentifier = identifier.trim();
+    const service = await this.prisma.service.findUnique({
+      where: { slug: trimmedIdentifier },
+      include: includeRelations,
+    });
 
     if (!service) throw new NotFoundException('Service not found');
     return service;

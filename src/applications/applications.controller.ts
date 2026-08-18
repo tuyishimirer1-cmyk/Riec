@@ -1,4 +1,17 @@
-import { Body, Controller, Get, Post, Put, Delete, Query, Param, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Query,
+  Param,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
   ApiOkResponse,
@@ -10,6 +23,7 @@ import {
   ApiParam,
   ApiCreatedResponse,
   ApiNotFoundResponse,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { ApplicationsService } from './applications.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
@@ -20,6 +34,7 @@ import { JobApplicationStatus } from '@prisma/client';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { BulkUpdateApplicationsDto } from './dto/bulk-update-applications.dto';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 class CreateApplicationDto {
   @IsString()
@@ -56,6 +71,11 @@ class CreateApplicationDto {
   @IsString()
   @ApiProperty({ required: false, example: 'cvs/ada-lovelace.pdf' })
   cvS3Key?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ required: false, example: '[{"type":"Bachelor\'s Degree","institution":"MIT","year":"2020"}]' })
+  qualifications?: string;
 }
 
 class DateRangeQueryDto {
@@ -76,7 +96,52 @@ class DateRangeQueryDto {
 @ApiTags('applications')
 @Controller('applications')
 export class ApplicationsController {
-  constructor(private readonly applicationsService: ApplicationsService) {}
+  constructor(
+    private readonly applicationsService: ApplicationsService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file'))
+  @ResponseMessage('File uploaded successfully')
+  @ApiOperation({
+    summary: 'Upload a file (CV, cover letter, or certificate)',
+    description:
+      'Upload files to Cloudinary for job applications. Returns secure URL.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiCreatedResponse({
+    description: 'File uploaded successfully',
+    schema: {
+      example: {
+        url: 'https://res.cloudinary.com/s7xamyvg/raw/upload/v123456/job_applications/cv-ada-lovelace.pdf',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'File upload failed',
+  })
+  async uploadFile(
+    @UploadedFile() file: any,
+    @Query('folder') folder?: string,
+  ) {
+    if (!file) {
+      throw new Error('No file provided');
+    }
+
+    const uploadFolder = folder || 'job_applications';
+    const result = await this.cloudinaryService.uploadFile(
+      {
+        originalname: file.originalname,
+        buffer: file.buffer,
+        mimetype: file.mimetype,
+        size: file.size,
+      },
+      uploadFolder,
+    );
+
+    return { url: result.secureUrl };
+  }
 
   @Post()
   @ResponseMessage('Application submitted successfully')
@@ -150,7 +215,8 @@ export class ApplicationsController {
   @ApiQuery({
     name: 'search',
     required: false,
-    description: 'Search in applicant full name and email (case-insensitive, partial match)',
+    description:
+      'Search in applicant full name and email (case-insensitive, partial match)',
   })
   @ApiQuery({
     name: 'page',
@@ -261,7 +327,8 @@ export class ApplicationsController {
     },
   })
   @ApiBadRequestResponse({
-    description: 'Validation error - jobId is required and pagination must be valid numbers',
+    description:
+      'Validation error - jobId is required and pagination must be valid numbers',
   })
   async listForJob(
     @Query('jobId') jobId: string,
@@ -273,10 +340,14 @@ export class ApplicationsController {
       status && status.toUpperCase() !== 'ALL'
         ? (status.toUpperCase() as any)
         : undefined;
-    const result = await this.applicationsService.listForJob(jobId, mappedStatus, {
-      skip,
-      take,
-    });
+    const result = await this.applicationsService.listForJob(
+      jobId,
+      mappedStatus,
+      {
+        skip,
+        take,
+      },
+    );
     return { ...result, page, pageSize };
   }
 
@@ -430,7 +501,8 @@ export class ApplicationsController {
   @ResponseMessage('Application retrieved successfully')
   @ApiOperation({
     summary: 'Get application by ID (admin)',
-    description: 'Retrieve full application details including attached CV and job information. Requires admin authentication.',
+    description:
+      'Retrieve full application details including attached CV and job information. Requires admin authentication.',
   })
   @ApiParam({
     name: 'id',
@@ -478,7 +550,7 @@ export class ApplicationsController {
   @ApiOperation({
     summary: 'Update application status and notes (admin)',
     description:
-      'Update an application\'s status and optionally add internal notes. Status changes: NEW → IN_REVIEW → SHORTLISTED/HIRED/REJECTED. Requires admin authentication.',
+      "Update an application's status and optionally add internal notes. Status changes: NEW → IN_REVIEW → SHORTLISTED/HIRED/REJECTED. Requires admin authentication.",
   })
   @ApiParam({
     name: 'id',
@@ -536,7 +608,8 @@ export class ApplicationsController {
   @ResponseMessage('Application deleted successfully')
   @ApiOperation({
     summary: 'Delete an application (admin)',
-    description: 'Permanently removes an application from the system. Requires admin authentication.',
+    description:
+      'Permanently removes an application from the system. Requires admin authentication.',
   })
   @ApiParam({
     name: 'id',
@@ -556,5 +629,3 @@ export class ApplicationsController {
     return this.applicationsService.remove(id);
   }
 }
-
-

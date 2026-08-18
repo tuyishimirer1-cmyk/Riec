@@ -50,7 +50,12 @@ describe('SearchController', () => {
 
       await controller.globalSearch('test', 'projects');
 
-      expect(mockService.globalSearch).toHaveBeenCalledWith('test', 'projects', 1, 20);
+      expect(mockService.globalSearch).toHaveBeenCalledWith(
+        'test',
+        'projects',
+        1,
+        20,
+      );
     });
 
     it('should use pagination params', async () => {
@@ -58,13 +63,22 @@ describe('SearchController', () => {
 
       await controller.globalSearch('test', undefined, 2, 10);
 
-      expect(mockService.globalSearch).toHaveBeenCalledWith('test', undefined, 2, 10);
+      expect(mockService.globalSearch).toHaveBeenCalledWith(
+        'test',
+        undefined,
+        2,
+        10,
+      );
     });
   });
 
   describe('searchProjects', () => {
     it('should return project search results', async () => {
-      mockService.searchProjects.mockResolvedValue({ data: [], total: 0, meta: {} });
+      mockService.searchProjects.mockResolvedValue({
+        data: [],
+        total: 0,
+        meta: {},
+      });
 
       const result = await controller.searchProjects('villa');
 
@@ -72,9 +86,21 @@ describe('SearchController', () => {
     });
 
     it('should pass filters', async () => {
-      mockService.searchProjects.mockResolvedValue({ data: [], total: 0, meta: {} });
+      mockService.searchProjects.mockResolvedValue({
+        data: [],
+        total: 0,
+        meta: {},
+      });
 
-      await controller.searchProjects('villa', 'RESIDENTIAL', 'COMPLETED', 'Lagos', 'true', 1, 20);
+      await controller.searchProjects(
+        'villa',
+        'RESIDENTIAL',
+        'COMPLETED',
+        'Lagos',
+        'true',
+        1,
+        20,
+      );
 
       expect(mockService.searchProjects).toHaveBeenCalledWith(
         'villa',
@@ -92,7 +118,11 @@ describe('SearchController', () => {
 
   describe('searchServices', () => {
     it('should return service search results', async () => {
-      mockService.searchServices.mockResolvedValue({ data: [], total: 0, meta: {} });
+      mockService.searchServices.mockResolvedValue({
+        data: [],
+        total: 0,
+        meta: {},
+      });
 
       const result = await controller.searchServices('architectural');
 
@@ -102,7 +132,11 @@ describe('SearchController', () => {
 
   describe('searchJobs', () => {
     it('should return job search results', async () => {
-      mockService.searchJobs.mockResolvedValue({ data: [], total: 0, meta: {} });
+      mockService.searchJobs.mockResolvedValue({
+        data: [],
+        total: 0,
+        meta: {},
+      });
 
       const result = await controller.searchJobs('engineer');
 
@@ -110,9 +144,21 @@ describe('SearchController', () => {
     });
 
     it('should pass filters', async () => {
-      mockService.searchJobs.mockResolvedValue({ data: [], total: 0, meta: {} });
+      mockService.searchJobs.mockResolvedValue({
+        data: [],
+        total: 0,
+        meta: {},
+      });
 
-      await controller.searchJobs('engineer', 'Engineering', 'Lagos', 'Full-time', 'true', 1, 20);
+      await controller.searchJobs(
+        'engineer',
+        'Engineering',
+        'Lagos',
+        'Full-time',
+        'true',
+        1,
+        20,
+      );
 
       expect(mockService.searchJobs).toHaveBeenCalledWith(
         'engineer',
@@ -130,7 +176,11 @@ describe('SearchController', () => {
 
   describe('searchApplications', () => {
     it('should return application search results', async () => {
-      mockService.searchApplications.mockResolvedValue({ data: [], total: 0, meta: {} });
+      mockService.searchApplications.mockResolvedValue({
+        data: [],
+        total: 0,
+        meta: {},
+      });
 
       const result = await controller.searchApplications('john');
 
@@ -138,7 +188,11 @@ describe('SearchController', () => {
     });
 
     it('should pass filters', async () => {
-      mockService.searchApplications.mockResolvedValue({ data: [], total: 0, meta: {} });
+      mockService.searchApplications.mockResolvedValue({
+        data: [],
+        total: 0,
+        meta: {},
+      });
 
       await controller.searchApplications('john', 'NEW', 'job1', 1, 20);
 
@@ -153,7 +207,11 @@ describe('SearchController', () => {
 
   describe('getSuggestions', () => {
     it('should return search suggestions', async () => {
-      mockService.searchSuggestions.mockResolvedValue({ projects: [], services: [], jobs: [] });
+      mockService.searchSuggestions.mockResolvedValue({
+        projects: [],
+        services: [],
+        jobs: [],
+      });
 
       const result = await controller.getSuggestions('arch');
 
@@ -161,7 +219,11 @@ describe('SearchController', () => {
     });
 
     it('should use limit param', async () => {
-      mockService.searchSuggestions.mockResolvedValue({ projects: [], services: [], jobs: [] });
+      mockService.searchSuggestions.mockResolvedValue({
+        projects: [],
+        services: [],
+        jobs: [],
+      });
 
       await controller.getSuggestions('arch', 10);
 

@@ -326,7 +326,30 @@ export class ProjectsService {
 
   async remove(identifier: string) {
     const project = await this.findByIdentifier(identifier);
-    await this.prisma.project.delete({ where: { id: project.id } });
+    
+    // Delete all related data in a transaction
+    await this.prisma.$transaction(async (tx) => {
+      // Delete project services
+      await tx.projectService.deleteMany({ where: { projectId: project.id } });
+      
+      // Delete project images
+      await tx.projectImage.deleteMany({ where: { projectId: project.id } });
+      
+      // Delete project pricing tiers
+      await tx.projectPriceTier.deleteMany({ where: { projectId: project.id } });
+      
+      // Delete project assets
+      await tx.projectAsset.deleteMany({ where: { projectId: project.id } });
+      
+      // Delete project assignments
+      await tx.projectAssignment.deleteMany({ where: { projectId: project.id } });
+      
+      // Note: Purchases are kept for records (change to deleteMany if needed)
+      // await tx.purchase.deleteMany({ where: { projectId: project.id } });
+      
+      // Finally, delete the project itself
+      await tx.project.delete({ where: { id: project.id } });
+    });
   }
 
   async publish(identifier: string) {

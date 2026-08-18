@@ -67,7 +67,10 @@ describe('ProjectsController', () => {
 
       await controller.findByIdentifier('test-project', 'images,services');
 
-      expect(mockService.findByIdentifier).toHaveBeenCalledWith('test-project', 'images,services');
+      expect(mockService.findByIdentifier).toHaveBeenCalledWith(
+        'test-project',
+        'images,services',
+      );
     });
   });
 
@@ -125,7 +128,9 @@ describe('ProjectsController', () => {
     it('should return projects by category', async () => {
       mockService.getProjectsByCategory.mockResolvedValue([]);
 
-      const result = await controller.getProjectsByCategory(ProjectCategory.RESIDENTIAL);
+      const result = await controller.getProjectsByCategory(
+        ProjectCategory.RESIDENTIAL,
+      );
 
       expect(result).toBeDefined();
     });
@@ -135,7 +140,9 @@ describe('ProjectsController', () => {
     it('should return count by category', async () => {
       mockService.getProjectCountByCategory.mockResolvedValue({ count: 10 });
 
-      const result = await controller.getProjectCountByCategory(ProjectCategory.RESIDENTIAL);
+      const result = await controller.getProjectCountByCategory(
+        ProjectCategory.RESIDENTIAL,
+      );
 
       expect(result.count).toBe(10);
     });
@@ -153,9 +160,14 @@ describe('ProjectsController', () => {
 
   describe('addYoutubeVideo', () => {
     it('should add youtube video URL', async () => {
-      mockService.addYoutubeVideo.mockResolvedValue({ id: '1', youtubeVideoUrl: 'https://youtube.com' });
+      mockService.addYoutubeVideo.mockResolvedValue({
+        id: '1',
+        youtubeVideoUrl: 'https://youtube.com',
+      });
 
-      const result = await controller.addYoutubeVideo('1', { youtubeVideoUrl: 'https://youtube.com' });
+      const result = await controller.addYoutubeVideo('1', {
+        youtubeVideoUrl: 'https://youtube.com',
+      });
 
       expect(result.youtubeVideoUrl).toBe('https://youtube.com');
     });

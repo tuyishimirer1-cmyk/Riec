@@ -24,7 +24,9 @@ describe('ProjectPurchasesController', () => {
       ],
     }).compile();
 
-    controller = module.get<ProjectPurchasesController>(ProjectPurchasesController);
+    controller = module.get<ProjectPurchasesController>(
+      ProjectPurchasesController,
+    );
     service = module.get<ProjectPurchasesService>(ProjectPurchasesService);
   });
 

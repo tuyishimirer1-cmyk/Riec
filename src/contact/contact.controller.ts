@@ -45,6 +45,11 @@ class ContactDto {
   @ApiProperty({ required: false, example: 'RIEC Ltd.' })
   company?: string;
 
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ required: false, example: 'Project Inquiry' })
+  subject?: string;
+
   @IsString()
   @MaxLength(2000)
   @ApiProperty({ example: 'Hello, I would like to request a quote...' })
@@ -147,18 +152,19 @@ export class ContactController {
   }
 
   @Post('quote')
-  @ResponseMessage('Quote request sent successfully')
+  @ResponseMessage('Quote request submitted successfully')
   @ApiOperation({
-    summary: 'Send a quote request email',
+    summary: 'Submit a quote request',
     description:
-      'Public endpoint for sending quote request emails via Resend. This endpoint does not store the data but directly sends an email to the configured recipient.',
+      'Public endpoint for submitting quote requests. Saves to database and optionally sends email notification.',
   })
   @ApiOkResponse({
-    description: 'Quote request email sent successfully',
+    description: 'Quote request submitted successfully',
     schema: {
       example: {
         success: true,
-        message: 'Quote request email sent successfully',
+        message: 'Quote request submitted successfully',
+        emailSent: true,
       },
     },
   })
@@ -166,15 +172,38 @@ export class ContactController {
     description: 'Validation error - required fields are missing',
   })
   async sendQuoteEmail(@Body() dto: QuoteRequestDto) {
-    const result = await this.emailService.sendQuoteEmail(dto);
+    // Save to database FIRST (most important)
+    const submission = await this.prisma.contactSubmission.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        phone: dto.phone,
+        company: dto.company,
+        subject: `Quote Request - ${dto.projectType}`,
+        message: `Project Type: ${dto.projectType}\nLocation: ${dto.location}\nTimeline: ${dto.timeline || 'N/A'}\nBudget: ${dto.budgetRange}\nServices: ${dto.servicesNeeded}\nSize: ${dto.size || 'N/A'}\nFloors: ${dto.floors || 'N/A'}\n\nNotes: ${dto.notes || 'None'}`,
+        read: false,
+      },
+    });
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to send email');
+    // Try to send email notification (optional - don't fail if this fails)
+    let emailSent = false;
+    try {
+      const emailResult = await this.emailService.sendQuoteEmail(dto);
+      emailSent = emailResult.success;
+      if (!emailResult.success) {
+        // Log error but don't fail the request
+        console.warn('Email notification failed:', emailResult.error);
+      }
+    } catch (error) {
+      // Log error but don't fail the request
+      console.warn('Email notification error:', error);
     }
 
     return {
       success: true,
-      message: 'Quote request email sent successfully',
+      message: 'Quote request submitted successfully',
+      emailSent,
+      submissionId: submission.id,
     };
   }
 
@@ -273,5 +302,77 @@ export class ContactController {
       where: { id },
       data: { read: true },
     });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('admin/submissions/:id/reply')
+  @ApiBearerAuth()
+  @ResponseMessage('Reply sent successfully')
+  @ApiOperation({
+    summary: 'Reply to a contact submission (admin)',
+    description:
+      'Send a reply to a contact submission. The reply will be saved and an email will be sent to the user. Requires admin authentication. NOTE: In test mode, emails can only be sent to the verified Resend email address.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'MongoDB ObjectId of the contact submission',
+    example: '65f34e7e0a2b3c4d5e6f7890',
+  })
+  @ApiOkResponse({
+    description: 'Reply sent successfully',
+    schema: {
+      example: {
+        id: '65f34e7e0a2b3c4d5e6f7890',
+        name: 'Grace Hopper',
+        email: 'grace@example.com',
+        reply: 'Thank you for contacting us...',
+        repliedAt: '2024-01-16T09:15:00Z',
+        read: true,
+        emailSent: true,
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid submission ID or reply message',
+  })
+  async replyToSubmission(
+    @Param('id') id: string,
+    @Body() body: { reply: string; adminEmail?: string },
+  ) {
+    // Update the submission with the reply
+    const submission = await this.prisma.contactSubmission.update({
+      where: { id },
+      data: {
+        reply: body.reply,
+        repliedAt: new Date(),
+        repliedBy: body.adminEmail || 'admin',
+        read: true,
+      },
+    });
+
+    // Send email to the user
+    let emailSent = false;
+    try {
+      const result = await this.emailService.sendReplyEmail({
+        to: submission.email,
+        name: submission.name,
+        originalMessage: submission.message,
+        reply: body.reply,
+        subject: submission.subject || undefined,
+      });
+      emailSent = result.success;
+      
+      if (!result.success) {
+        console.error('Failed to send email:', result.error);
+      }
+    } catch (error) {
+      console.error('Failed to send reply email:', error);
+      // Don't fail the request if email fails
+    }
+
+    return {
+      ...submission,
+      emailSent,
+    };
   }
 }

@@ -31,7 +31,10 @@ describe('slug util', () => {
     it('returns base slug when it is unique', async () => {
       const checkExistence = jest.fn().mockResolvedValue(false);
 
-      const slug = await generateUniqueSlug('Full Stack Engineer', checkExistence);
+      const slug = await generateUniqueSlug(
+        'Full Stack Engineer',
+        checkExistence,
+      );
 
       expect(slug).toBe('full-stack-engineer');
       expect(checkExistence).toHaveBeenCalledTimes(1);
@@ -45,7 +48,10 @@ describe('slug util', () => {
         .mockResolvedValueOnce(true)
         .mockResolvedValueOnce(false);
 
-      const slug = await generateUniqueSlug('Full Stack Engineer', checkExistence);
+      const slug = await generateUniqueSlug(
+        'Full Stack Engineer',
+        checkExistence,
+      );
 
       expect(slug).toBe('full-stack-engineer-2');
       expect(checkExistence).toHaveBeenNthCalledWith(
@@ -73,7 +79,11 @@ describe('slug util', () => {
 
       await generateUniqueSlug('Backend Lead', checkExistence, 'existing-id');
 
-      expect(checkExistence).toHaveBeenNthCalledWith(1, 'backend-lead', 'existing-id');
+      expect(checkExistence).toHaveBeenNthCalledWith(
+        1,
+        'backend-lead',
+        'existing-id',
+      );
       expect(checkExistence).toHaveBeenNthCalledWith(
         2,
         'backend-lead-1',

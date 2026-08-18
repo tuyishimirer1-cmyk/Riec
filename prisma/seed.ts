@@ -2,7 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import 'dotenv/config';
+import { config } from 'dotenv';
+
+config({ path: '.env' });
 import {
   PrismaClient,
   ProjectType,
@@ -371,23 +373,28 @@ async function main() {
     orderBy: { order: 'asc' },
   });
   for (const [index, project] of projectsData.entries()) {
-    const service = allServices[index % allServices.length];
-    await prisma.project.upsert({
-      where: { slug: project.slug },
-      create: {
-        ...project,
-        services: {
-          connect: [{ id: service.id }],
-        },
+  const service = allServices[index % allServices.length];
+
+  const createdProject = await prisma.project.upsert({
+    where: { slug: project.slug },
+    create: project,
+    update: project,
+  });
+
+  await prisma.projectService.upsert({
+    where: {
+      projectId_serviceId: {
+        projectId: createdProject.id,
+        serviceId: service.id,
       },
-      update: {
-        ...project,
-        services: {
-          set: [{ id: service.id }],
-        },
-      },
-    });
-  }
+    },
+    create: {
+      projectId: createdProject.id,
+      serviceId: service.id,
+    },
+    update: {},
+  });
+}
   console.log('Created/updated', projectsData.length, 'Project entities');
 
   // 4. Seed Jobs

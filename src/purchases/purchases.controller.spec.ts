@@ -39,9 +39,9 @@ describe('PurchasesController', () => {
         meta: { total: 0, page: 1, limit: 20, totalPages: 1 },
       });
 
-      const result = await controller.getMyPurchases(
-        { user: { email: 'test@example.com' } } as any,
-      );
+      const result = await controller.getMyPurchases({
+        user: { email: 'test@example.com' },
+      } as any);
 
       expect(result).toBeDefined();
     });

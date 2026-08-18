@@ -102,6 +102,7 @@ export class ProjectPurchasesService {
       where: { id: purchaseId, projectId },
       include: {
         tier: { include: { assets: { where: { isDownloadable: true } } } },
+        project: { include: { assets: { where: { isDownloadable: true } } } },
       },
     });
     if (!purchase) throw new NotFoundException('Purchase not found');
@@ -109,8 +110,11 @@ export class ProjectPurchasesService {
       throw new ForbiddenException('Purchase has not been completed');
     }
 
+    // If purchase has a tier, use tier assets; otherwise use all project assets
+    const assets = purchase.tier?.assets || purchase.project.assets;
+
     const urls = await Promise.all(
-      purchase.tier.assets.map(async (asset) => ({
+      assets.map(async (asset) => ({
         assetId: asset.id,
         filename: asset.filename,
         documentType: asset.documentType,

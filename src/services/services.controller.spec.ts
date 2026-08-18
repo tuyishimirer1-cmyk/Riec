@@ -79,7 +79,10 @@ describe('ServicesController', () => {
 
       await controller.findByIdentifier('test-slug', 'images,projects');
 
-      expect(mockService.findByIdentifier).toHaveBeenCalledWith('test-slug', 'images,projects');
+      expect(mockService.findByIdentifier).toHaveBeenCalledWith(
+        'test-slug',
+        'images,projects',
+      );
     });
   });
 

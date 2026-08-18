@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { S3Service } from '../s3/s3.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { UpdateImageDto } from './dto/update-image.dto';
 
 @Injectable()
 export class ProjectImagesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly s3: S3Service,
+    private readonly storage: CloudinaryService,
   ) {}
 
   private async assertProject(projectId: string) {
@@ -34,16 +34,15 @@ export class ProjectImagesService {
 
     return Promise.all(
       files.map(async (file, idx) => {
-        const s3Key = await this.s3.uploadFile(
+        const result = await this.storage.uploadFile(
           file,
-          `projects/${projectId}/images`,
+          `riec/projects/${projectId}/images`,
         );
-        const url = await this.s3.generateSignedUrl(s3Key);
         return this.prisma.projectImage.create({
           data: {
             projectId,
-            s3Key,
-            url,
+            s3Key: result.publicId,
+            url: result.secureUrl,
             caption: captions?.[idx],
             order: existing + idx,
           },
@@ -76,7 +75,7 @@ export class ProjectImagesService {
       where: { id: imageId, projectId },
     });
     if (!image) throw new NotFoundException('Image not found');
-    await this.s3.deleteFileByKey(image.s3Key);
+    await this.storage.deleteFile(image.s3Key);
     await this.prisma.projectImage.delete({ where: { id: imageId } });
   }
 

@@ -15,6 +15,7 @@ import { ServiceImagesModule } from './service-images/service-images.module';
 import { UsersModule } from './users/users.module';
 import { ContactModule } from './contact/contact.module';
 import { S3Module } from './s3/s3.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { CareersModule } from './careers/careers.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -28,6 +29,7 @@ import { AppService } from './app.service';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    CloudinaryModule,
     AuthModule,
     ProjectsModule,
     ProjectImagesModule,

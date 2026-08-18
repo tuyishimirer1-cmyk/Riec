@@ -30,8 +30,11 @@ export class S3Service {
       'S3_CLOUDFRONT_DOMAIN',
     );
 
+    const endpoint = this.configService.get<string>('AWS_ENDPOINT');
+    
     this.s3Client = new S3Client({
-      region: this.configService.get<string>('AWS_REGION'),
+      region: this.configService.get<string>('AWS_REGION') || 'auto',
+      endpoint: endpoint, // Cloudflare R2 endpoint
       credentials: {
         accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID') || '',
         secretAccessKey:
@@ -87,6 +90,14 @@ export class S3Service {
     if (this.cloudfrontDomain) {
       return `${this.cloudfrontDomain}/${key}`;
     }
+    
+    // For Cloudflare R2, use the public domain if configured
+    const r2PublicDomain = this.configService.get<string>('R2_PUBLIC_DOMAIN');
+    if (r2PublicDomain) {
+      return `${r2PublicDomain}/${key}`;
+    }
+    
+    // Fallback to S3 format
     return `https://${this.bucket}.s3.${this.configService.get<string>('AWS_REGION')}.amazonaws.com/${key}`;
   }
 

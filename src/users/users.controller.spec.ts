@@ -43,7 +43,9 @@ describe('UsersController', () => {
     it('should return user profile', async () => {
       mockService.getUserProfile.mockResolvedValue({ id: '1' });
 
-      const result = await controller.getProfile({ user: { userId: '1' } } as any);
+      const result = await controller.getProfile({
+        user: { userId: '1' },
+      } as any);
 
       expect(result.id).toBe('1');
     });
@@ -94,11 +96,9 @@ describe('UsersController', () => {
     it('should update user role', async () => {
       mockService.updateUserRole.mockResolvedValue({ id: '1', role: 'ADMIN' });
 
-      const result = await controller.updateUserRole(
-        '1',
-        { role: 'ADMIN' },
-        { user: { userId: 'admin' } } as any,
-      );
+      const result = await controller.updateUserRole('1', { role: 'ADMIN' }, {
+        user: { userId: 'admin' },
+      } as any);
 
       expect(result.role).toBe('ADMIN');
     });

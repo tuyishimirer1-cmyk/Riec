@@ -17,8 +17,9 @@ export class ApplicationsService {
     coverLetter?: string;
     cvUrl?: string;
     cvS3Key?: string;
+    qualifications?: string;
   }) {
-    return this.prisma.jobApplication.create({ 
+    return this.prisma.jobApplication.create({
       data,
       include: {
         job: {
@@ -46,22 +47,40 @@ export class ApplicationsService {
     limit: number,
   ) {
     const { skip, take, meta } = paginate(page, limit);
-    
+
     const where: any = {
       ...(filters.jobId ? { jobId: filters.jobId } : {}),
       ...(filters.status ? { status: filters.status } : {}),
-      ...(filters.search ? {
-        OR: [
-          { fullName: { contains: filters.search, mode: 'insensitive' } },
-          { email: { contains: filters.search, mode: 'insensitive' } },
-        ],
-      } : {}),
-      ...(filters.department || filters.location ? {
-        job: {
-          ...(filters.department ? { department: { contains: filters.department, mode: 'insensitive' } } : {}),
-          ...(filters.location ? { location: { contains: filters.location, mode: 'insensitive' } } : {}),
-        },
-      } : {}),
+      ...(filters.search
+        ? {
+            OR: [
+              { fullName: { contains: filters.search, mode: 'insensitive' } },
+              { email: { contains: filters.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(filters.department || filters.location
+        ? {
+            job: {
+              ...(filters.department
+                ? {
+                    department: {
+                      contains: filters.department,
+                      mode: 'insensitive',
+                    },
+                  }
+                : {}),
+              ...(filters.location
+                ? {
+                    location: {
+                      contains: filters.location,
+                      mode: 'insensitive',
+                    },
+                  }
+                : {}),
+            },
+          }
+        : {}),
     };
 
     const [items, total] = await this.prisma.$transaction([
@@ -187,32 +206,35 @@ export class ApplicationsService {
 
   async getStats(jobId?: string) {
     const baseWhere = jobId ? { jobId } : {};
-    
-    const [total, byStatus, byJob, recentApplications] = await this.prisma.$transaction([
-      this.prisma.jobApplication.count({ where: baseWhere }),
-      this.prisma.jobApplication.groupBy({
-        by: ['status'],
-        where: baseWhere,
-        _count: { _all: true },
-        orderBy: { status: 'asc' },
-      }),
-      ...(jobId ? [] : [
+
+    const [total, byStatus, byJob, recentApplications] =
+      await this.prisma.$transaction([
+        this.prisma.jobApplication.count({ where: baseWhere }),
         this.prisma.jobApplication.groupBy({
-          by: ['jobId'],
+          by: ['status'],
+          where: baseWhere,
           _count: { _all: true },
-          orderBy: { jobId: 'asc' },
-          take: 10,
+          orderBy: { status: 'asc' },
         }),
-      ]),
-      this.prisma.jobApplication.count({
-        where: {
-          ...baseWhere,
-          createdAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+        ...(jobId
+          ? []
+          : [
+              this.prisma.jobApplication.groupBy({
+                by: ['jobId'],
+                _count: { _all: true },
+                orderBy: { jobId: 'asc' },
+                take: 10,
+              }),
+            ]),
+        this.prisma.jobApplication.count({
+          where: {
+            ...baseWhere,
+            createdAt: {
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+            },
           },
-        },
-      }),
-    ]);
+        }),
+      ]);
 
     return {
       total,
@@ -222,7 +244,11 @@ export class ApplicationsService {
     };
   }
 
-  async getApplicationsByDateRange(startDate: Date, endDate: Date, jobId?: string) {
+  async getApplicationsByDateRange(
+    startDate: Date,
+    endDate: Date,
+    jobId?: string,
+  ) {
     const where = {
       createdAt: {
         gte: startDate,
@@ -270,5 +296,3 @@ export class ApplicationsService {
     });
   }
 }
-
-
