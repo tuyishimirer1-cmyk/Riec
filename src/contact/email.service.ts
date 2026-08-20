@@ -274,4 +274,153 @@ export class EmailService {
       };
     }
   }
+
+  /**
+   * Send project purchase confirmation email with PDF download link
+   */
+  async sendProjectPurchaseEmail(params: {
+    to: string;
+    customerName: string;
+    projectName: string;
+    projectDescription?: string;
+    downloadToken: string;
+    transactionId: string;
+    amount?: string;
+  }): Promise<{ success: boolean; data?: any; error?: string }> {
+    // Use Gmail SMTP for purchase emails (more reliable)
+    if (!this.transporter) {
+      return { success: false, error: 'Gmail SMTP is not configured' };
+    }
+
+    try {
+      const gmailFrom = process.env.GMAIL_USER || 'riec2025@gmail.com';
+      const frontendUrl = process.env.FRONTEND_BASE_URL || 'https://www.riec.rw';
+      const downloadUrl = `${frontendUrl}/payment/result?token=${params.downloadToken}`;
+
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">RIEC</h1>
+            <p style="color: rgba(255,255,255,0.95); margin: 8px 0 0 0; font-size: 16px;">Room of Innovative and Engineering Construction</p>
+          </div>
+          
+          <div style="background: #ffffff; padding: 40px 30px; border: 1px solid #e5e7eb; border-top: none;">
+            <h2 style="color: #111827; font-size: 22px; margin: 0 0 16px 0;">Your RIEC Project Purchase – Download Your Full Project</h2>
+            
+            <p style="color: #374151; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+              Hello <strong>${params.customerName}</strong>,
+            </p>
+
+            <p style="color: #374151; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+              Thank you for your purchase from RIEC.
+            </p>
+
+            <div style="background: #f0fdf4; border: 2px solid #86efac; padding: 20px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+              <p style="color: #166534; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">✅ Payment Successfully Confirmed</p>
+              <p style="color: #15803d; font-size: 14px; margin: 0;">Transaction ID: ${params.transactionId}</p>
+            </div>
+
+            <div style="background: #f9fafb; padding: 24px; border-radius: 8px; border-left: 4px solid #f97316; margin-bottom: 24px;">
+              <h3 style="color: #111827; font-size: 16px; margin: 0 0 12px 0;">📁 Purchased Project:</h3>
+              <p style="color: #374151; font-size: 15px; margin: 0 0 8px 0;"><strong>${params.projectName}</strong></p>
+              ${params.projectDescription ? `<p style="color: #6b7280; font-size: 14px; margin: 0;">${params.projectDescription}</p>` : ''}
+              ${params.amount ? `<p style="color: #374151; font-size: 14px; margin: 8px 0 0 0;"><strong>Amount Paid:</strong> ${params.amount}</p>` : ''}
+            </div>
+
+            <div style="background: #fff7ed; padding: 24px; border-radius: 8px; border: 2px solid #fdba74; margin-bottom: 24px;">
+              <h3 style="color: #9a3412; font-size: 16px; margin: 0 0 12px 0;">🔑 Your Download Token:</h3>
+              <div style="background: white; padding: 16px; border-radius: 6px; border: 1px solid #fed7aa; margin-bottom: 16px;">
+                <code style="color: #ea580c; font-size: 14px; font-family: 'Courier New', monospace; word-break: break-all;">${params.downloadToken}</code>
+              </div>
+              <p style="color: #9a3412; font-size: 13px; margin: 0; line-height: 1.6;">
+                <strong>Important:</strong> Save this token. You can use it to download your purchased files anytime within the next 48 hours.
+              </p>
+            </div>
+
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${downloadUrl}" style="display: inline-block; background: #f97316; color: white; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                Download Your Project Files
+              </a>
+            </div>
+
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+              <p style="color: #374151; font-size: 14px; margin: 0 0 12px 0; font-weight: 600;">📥 How to Download:</p>
+              <ol style="color: #6b7280; font-size: 13px; line-height: 1.7; margin: 0; padding-left: 20px;">
+                <li>Click the download button above, OR</li>
+                <li>Visit <a href="${downloadUrl}" style="color: #f97316;">${downloadUrl}</a></li>
+                <li>Your token will be automatically filled in</li>
+                <li>Click "Load downloads" to see your files</li>
+                <li>Download each file you need</li>
+              </ol>
+            </div>
+
+            <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+              If you experience any problem accessing the files, please don't hesitate to contact us with your download token and transaction ID.
+            </p>
+
+            <div style="text-align: center; margin-top: 40px; padding-top: 24px; border-top: 2px solid #e5e7eb;">
+              <p style="color: #9ca3af; font-size: 13px; margin: 4px 0;">Thank you for choosing RIEC.</p>
+              <p style="color: #111827; font-size: 16px; font-weight: 600; margin: 8px 0;">Best regards,</p>
+              <p style="color: #374151; font-size: 15px; font-weight: 600; margin: 4px 0;">RIEC Ltd</p>
+              <p style="color: #6b7280; font-size: 13px; margin: 4px 0;">Room of Innovative and Engineering Construction</p>
+              <p style="color: #9ca3af; font-size: 13px; margin: 16px 0 0 0; line-height: 1.6;">
+                Kigali, Rwanda<br/>
+                +250 787 106 854 | +250 784 231 101<br/>
+                <a href="mailto:riec2025@gmail.com" style="color: #f97316; text-decoration: none;">riec2025@gmail.com</a><br/>
+                <a href="https://www.riec.rw" style="color: #f97316; text-decoration: none;">www.riec.rw</a>
+              </p>
+            </div>
+          </div>
+
+          <div style="text-align: center; margin-top: 20px; padding: 20px;">
+            <p style="color: #9ca3af; font-size: 11px; margin: 0; line-height: 1.6;">
+              This email was sent to confirm your project purchase from RIEC.<br/>
+              © 2026 Room of Innovative and Engineering Construction. All rights reserved.
+            </p>
+          </div>
+        </div>
+      `;
+
+      const info = await this.transporter.sendMail({
+        from: `"RIEC" <${gmailFrom}>`,
+        to: params.to,
+        subject: `Your RIEC Project Purchase – ${params.projectName}`,
+        html: htmlContent,
+        text: `Hello ${params.customerName},
+
+Thank you for your purchase from RIEC.
+
+Your payment has been successfully confirmed. 
+
+Purchased Project: ${params.projectName}
+Transaction ID: ${params.transactionId}
+${params.amount ? `Amount Paid: ${params.amount}` : ''}
+
+Download Token: ${params.downloadToken}
+
+You can download your project files at: ${downloadUrl}
+
+If you experience any problem accessing the files, please contact us with your download token.
+
+Thank you for choosing RIEC.
+
+Best regards,
+RIEC Ltd
+Room of Innovative and Engineering Construction
+Kigali, Rwanda
++250 787 106 854 | +250 784 231 101
+riec2025@gmail.com
+www.riec.rw`,
+      });
+
+      this.logger.log(`Project purchase email sent successfully: ${info.messageId}`);
+      return { success: true, data: { messageId: info.messageId } };
+    } catch (error) {
+      this.logger.error('Send project purchase email error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
 }

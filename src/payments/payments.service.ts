@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../contact/email.service';
 
 @Injectable()
 export class PaymentsService {
@@ -9,7 +10,10 @@ export class PaymentsService {
   private paypackAccessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   private async getPaypackAccessToken(): Promise<string> {
     // Return cached token if still valid
@@ -144,6 +148,24 @@ export class PaymentsService {
       console.log(`   Download Token: ${token}`);
       console.log(`   Token can be used at: ${process.env.FRONTEND_BASE_URL}/payment/result?token=${token}`);
 
+      // Send confirmation email with download link
+      console.log('📧 Sending purchase confirmation email...');
+      try {
+        await this.emailService.sendProjectPurchaseEmail({
+          to: input.email,
+          customerName: input.fullName,
+          projectName: project.title,
+          projectDescription: project.description || undefined,
+          downloadToken: token,
+          transactionId: purchase.id,
+          amount: `${amount.toLocaleString()} ${currency}`,
+        });
+        console.log('✅ Confirmation email sent successfully!');
+      } catch (emailError) {
+        console.error('❌ Failed to send confirmation email:', emailError);
+        // Don't fail the payment if email fails
+      }
+
       // Return a test payment link that redirects to success page
       return { 
         link: `${process.env.FRONTEND_BASE_URL}/payment/result?status=success&tx_ref=${txRef}&transaction_id=${purchase.id}&token=${token}`,
@@ -231,6 +253,32 @@ export class PaymentsService {
           data: { status: 'SUCCESS', downloadToken: token },
         });
         console.log(`✅ Purchase ${purchase.id} marked as SUCCESS with token: ${token}`);
+
+        // Fetch project details for email
+        const purchaseWithProject = await this.prisma.purchase.findUnique({
+          where: { id: purchase.id },
+          include: { project: true },
+        });
+
+        if (purchaseWithProject && purchaseWithProject.project) {
+          // Send confirmation email
+          console.log('📧 Sending purchase confirmation email...');
+          try {
+            await this.emailService.sendProjectPurchaseEmail({
+              to: purchase.email,
+              customerName: purchase.fullName,
+              projectName: purchaseWithProject.project.title,
+              projectDescription: purchaseWithProject.project.description || undefined,
+              downloadToken: token,
+              transactionId: purchase.id,
+              amount: `${purchase.amount.toLocaleString()} ${purchase.currency}`,
+            });
+            console.log('✅ Confirmation email sent successfully!');
+          } catch (emailError) {
+            console.error('❌ Failed to send confirmation email:', emailError);
+            // Don't fail the webhook if email fails
+          }
+        }
       } else if (status === 'failed' || status === 'failure') {
         await this.prisma.purchase.update({
           where: { id: purchase.id },
