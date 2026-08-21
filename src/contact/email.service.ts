@@ -290,15 +290,20 @@ export class EmailService {
     transactionId: string;
     amount?: string;
   }): Promise<{ success: boolean; data?: any; error?: string }> {
-    // Use Gmail SMTP for purchase emails (more reliable)
-    if (!this.transporter) {
-      return { success: false, error: 'Gmail SMTP is not configured' };
+    // Use Resend for purchase emails (more reliable for server-to-server)
+    if (!this.resend) {
+      return { success: false, error: 'Resend API is not configured' };
     }
 
     try {
-      const gmailFrom = process.env.GMAIL_USER || 'riec2025@gmail.com';
+      const fromEmail = process.env.RESEND_FROM_EMAIL || 'RIEC <onboarding@resend.dev>';
       const frontendUrl = process.env.FRONTEND_BASE_URL || 'https://www.riec.rw';
       const downloadUrl = `${frontendUrl}/payment/result?token=${params.downloadToken}`;
+
+      const { data, error} = await this.resend.emails.send({
+        from: fromEmail,
+        to: [params.to],
+        subject: `Your RIEC Project Purchase – ${params.projectName}`,
 
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -416,8 +421,16 @@ riec2025@gmail.com
 www.riec.rw`,
       });
 
-      this.logger.log(`Project purchase email sent successfully: ${info.messageId}`);
-      return { success: true, data: { messageId: info.messageId } };
+      if (error) {
+        this.logger.error('Resend error:', error);
+        return {
+          success: false,
+          error: error.message || 'Failed to send email',
+        };
+      }
+
+      this.logger.log(`Project purchase email sent successfully via Resend: ${data.id}`);
+      return { success: true, data };
     } catch (error) {
       this.logger.error('Send project purchase email error:', error);
       return {
