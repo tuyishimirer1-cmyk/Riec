@@ -75,13 +75,24 @@ export class CloudinaryService implements OnModuleInit {
       const b64 = file.buffer.toString('base64');
       const dataURI = `data:${file.mimetype};base64,${b64}`;
 
-      // Use cloudinary SDK upload method with public access
-      const result = await cloudinary.uploader.upload(dataURI, {
+      // Detect if this is a PDF or document
+      const isPdf = file.mimetype === 'application/pdf';
+      
+      // Use cloudinary SDK upload method with appropriate settings
+      const uploadOptions: any = {
         folder: folder,
-        resource_type: 'auto',
+        resource_type: 'auto',  // Let Cloudinary auto-detect
         access_mode: 'public',
         type: 'upload',
-      });
+      };
+      
+      // For PDFs, ensure they're stored as image type to enable previews but preserve all pages
+      if (isPdf) {
+        uploadOptions.resource_type = 'image';  // Store as image type for better handling
+        uploadOptions.format = 'pdf';           // But keep PDF format
+      }
+
+      const result = await cloudinary.uploader.upload(dataURI, uploadOptions);
 
       this.logger.log(`✅ Upload SUCCESS!`);
       this.logger.log(`   Public ID: ${result.public_id}`);
@@ -122,12 +133,12 @@ export class CloudinaryService implements OnModuleInit {
                     publicId.toLowerCase().includes('/documents/');
       
       if (isPdf) {
-        // For PDFs and documents: Return raw file URL without any transformations
+        // For PDFs and documents: Return URL without image transformations
         // This preserves all pages in the PDF
         return cloudinary.url(publicId, {
           secure: true,
-          resource_type: 'raw',  // Use 'raw' for documents to prevent image conversion
-          type: 'upload',
+          resource_type: 'auto',  // Let Cloudinary auto-detect the resource type
+          flags: 'attachment',     // Force download instead of inline display
         });
       }
       
