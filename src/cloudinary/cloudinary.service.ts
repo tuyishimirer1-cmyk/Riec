@@ -126,19 +126,20 @@ export class CloudinaryService implements OnModuleInit {
     }
   }
 
-  async generateSignedUrl(publicId: string): Promise<string> {
+  async generateSignedUrl(publicId: string, fileType?: string): Promise<string> {
     try {
       // Check if this is a PDF or document (don't transform documents!)
-      const isPdf = publicId.toLowerCase().endsWith('.pdf') || 
+      const isPdf = fileType === 'application/pdf' || 
+                    publicId.toLowerCase().endsWith('.pdf') || 
                     publicId.toLowerCase().includes('/documents/');
       
       if (isPdf) {
-        // For PDFs and documents: Return URL without image transformations
+        // For PDFs and documents: Return URL without any transformations
         // This preserves all pages in the PDF
         return cloudinary.url(publicId, {
           secure: true,
-          resource_type: 'auto',  // Let Cloudinary auto-detect the resource type
-          flags: 'attachment',     // Force download instead of inline display
+          resource_type: 'image',  // PDFs are stored as image type in Cloudinary
+          type: 'upload',
         });
       }
       

@@ -121,7 +121,9 @@ export class ProjectAssetsService {
     const asset = await this.findAssetOrFail(projectId, assetId);
     if (!asset.isDownloadable)
       throw new ForbiddenException('Asset is not downloadable');
-    const url = await this.cloudinary.generateSignedUrl(asset.s3Key);
+    
+    // For documents/PDFs, we need to get the direct Cloudinary URL without transformations
+    const url = await this.cloudinary.generateSignedUrl(asset.s3Key, asset.fileType);
     return { url, filename: asset.filename, fileType: asset.fileType };
   }
 }
