@@ -24,6 +24,10 @@ export class PaymentsService {
     try {
       console.log('🔐 Authenticating with Paypack...');
       console.log('   Client ID:', process.env.PAYPACK_CLIENT_ID?.substring(0, 10) + '...');
+      console.log('   Client ID Full:', process.env.PAYPACK_CLIENT_ID);
+      console.log('   Secret EXISTS:', !!process.env.PAYPACK_CLIENT_SECRET);
+      console.log('   Secret LENGTH:', process.env.PAYPACK_CLIENT_SECRET?.length);
+      console.log('   Secret First 10 chars:', process.env.PAYPACK_CLIENT_SECRET?.substring(0, 10));
       
       // Try the authorization endpoint
       const response = await axios.post(
