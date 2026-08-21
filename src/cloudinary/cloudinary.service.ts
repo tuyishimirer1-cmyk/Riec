@@ -117,7 +117,21 @@ export class CloudinaryService implements OnModuleInit {
 
   async generateSignedUrl(publicId: string): Promise<string> {
     try {
-      // Cloudinary URLs are already public and optimized
+      // Check if this is a PDF or document (don't transform documents!)
+      const isPdf = publicId.toLowerCase().endsWith('.pdf') || 
+                    publicId.toLowerCase().includes('/documents/');
+      
+      if (isPdf) {
+        // For PDFs and documents: Return raw file URL without any transformations
+        // This preserves all pages in the PDF
+        return cloudinary.url(publicId, {
+          secure: true,
+          resource_type: 'raw',  // Use 'raw' for documents to prevent image conversion
+          type: 'upload',
+        });
+      }
+      
+      // For images only: Apply optimization transformations
       return cloudinary.url(publicId, {
         secure: true,
         transformation: [
