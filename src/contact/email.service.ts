@@ -300,11 +300,6 @@ export class EmailService {
       const frontendUrl = process.env.FRONTEND_BASE_URL || 'https://www.riec.rw';
       const downloadUrl = `${frontendUrl}/payment/result?token=${params.downloadToken}`;
 
-      const { data, error} = await this.resend.emails.send({
-        from: fromEmail,
-        to: [params.to],
-        subject: `Your RIEC Project Purchase – ${params.projectName}`,
-
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -389,9 +384,9 @@ export class EmailService {
         </div>
       `;
 
-      const info = await this.transporter.sendMail({
-        from: `"RIEC" <${gmailFrom}>`,
-        to: params.to,
+      const { data, error } = await this.resend.emails.send({
+        from: fromEmail,
+        to: [params.to],
         subject: `Your RIEC Project Purchase – ${params.projectName}`,
         html: htmlContent,
         text: `Hello ${params.customerName},
