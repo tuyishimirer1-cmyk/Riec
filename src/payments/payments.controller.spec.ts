@@ -34,7 +34,7 @@ describe('PaymentsController', () => {
   describe('initProjectCheckout', () => {
     it('should create checkout session', async () => {
       mockService.initProjectCheckout.mockResolvedValue({
-        link: 'https://checkout.paypack.rw/xyz',
+        link: 'https://checkout.rwandapay.rw/xyz',
         ref: 'RIEC-123-456',
       });
 
@@ -45,7 +45,7 @@ describe('PaymentsController', () => {
         fullName: 'Test',
       });
 
-      expect(result.link).toBe('https://checkout.paypack.rw/xyz');
+      expect(result.link).toBe('https://checkout.rwandapay.rw/xyz');
       expect(result.ref).toBe('RIEC-123-456');
     });
   });

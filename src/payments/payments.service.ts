@@ -6,58 +6,12 @@ import { EmailService } from '../contact/email.service';
 
 @Injectable()
 export class PaymentsService {
-  private readonly paypackBaseUrl = 'https://payments.paypack.rw/api';
-  private paypackAccessToken: string | null = null;
-  private tokenExpiresAt: Date | null = null;
-
+  private readonly rwandapayBaseUrl = 'https://api.rwandapay.rw/v1';
+  
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
   ) {}
-
-  private async getPaypackAccessToken(): Promise<string> {
-    // Return cached token if still valid
-    if (this.paypackAccessToken && this.tokenExpiresAt && new Date() < this.tokenExpiresAt) {
-      return this.paypackAccessToken as string;
-    }
-
-    try {
-      console.log('🔐 Authenticating with Paypack...');
-      console.log('   Client ID:', process.env.PAYPACK_CLIENT_ID?.substring(0, 10) + '...');
-      console.log('   Client ID Full:', process.env.PAYPACK_CLIENT_ID);
-      console.log('   Secret EXISTS:', !!process.env.PAYPACK_CLIENT_SECRET);
-      console.log('   Secret LENGTH:', process.env.PAYPACK_CLIENT_SECRET?.length);
-      console.log('   Secret First 10 chars:', process.env.PAYPACK_CLIENT_SECRET?.substring(0, 10));
-      
-      // Try the authorization endpoint
-      const response = await axios.post(
-        `${this.paypackBaseUrl}/auth/agents/authorize`,
-        {
-          client_id: process.env.PAYPACK_CLIENT_ID,
-          client_secret: process.env.PAYPACK_CLIENT_SECRET,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      console.log('✅ Paypack authentication successful!');
-      this.paypackAccessToken = response.data.access || response.data.token || response.data.access_token;
-      // Token typically expires in 1 hour, refresh 5 mins early
-      this.tokenExpiresAt = new Date(Date.now() + 55 * 60 * 1000);
-      
-      return this.paypackAccessToken as string;
-    } catch (error: any) {
-      console.error('❌ Paypack auth error:', error.response?.data || error.message);
-      console.error('   Status:', error.response?.status);
-      console.error('   Full response:', JSON.stringify(error.response?.data, null, 2));
-      throw new BadRequestException(
-        error.response?.data?.message || 'Failed to authenticate with Paypack',
-      );
-    }
-  }
 
   async initProjectCheckout(input: {
     projectId: string;
@@ -99,12 +53,11 @@ export class PaymentsService {
       }
       amount = project.basePrice;
       currency = project.currency || 'RWF';
-      tierId = null; // null means it's a simple purchase without tier
+      tierId = null;
     }
 
-    // Paypack only supports RWF, convert if needed
+    // RwandaPay supports RWF, convert if needed
     if (currency !== 'RWF') {
-      // Simple conversion: 1 USD = 1300 RWF (you should use a real exchange rate API)
       amount = currency === 'USD' ? amount * 1300 : amount;
       currency = 'RWF';
     }
@@ -117,7 +70,7 @@ export class PaymentsService {
         fullName: input.fullName,
         amount: amount,
         currency: currency,
-        flutterwaveRef: '', // Will be updated with Paypack ref
+        flutterwaveRef: '', // Will be updated with RwandaPay ref
       },
     });
 
@@ -132,13 +85,11 @@ export class PaymentsService {
       console.log(`   Amount: ${amount} ${currency}`);
       console.log(`   Customer: ${input.fullName} (${input.email})`);
       
-      // Update purchase with test reference
       await this.prisma.purchase.update({
         where: { id: purchase.id },
         data: { flutterwaveRef: txRef },
       });
 
-      // Auto-complete the payment in test mode
       const token = randomBytes(24).toString('hex');
       await this.prisma.purchase.update({
         where: { id: purchase.id },
@@ -150,9 +101,8 @@ export class PaymentsService {
 
       console.log('✅ TEST MODE: Payment simulated successfully!');
       console.log(`   Download Token: ${token}`);
-      console.log(`   Token can be used at: ${process.env.FRONTEND_BASE_URL}/payment/result?token=${token}`);
 
-      // Send confirmation email with download link
+      // Send confirmation email
       console.log('📧 Sending purchase confirmation email...');
       try {
         await this.emailService.sendProjectPurchaseEmail({
@@ -167,10 +117,8 @@ export class PaymentsService {
         console.log('✅ Confirmation email sent successfully!');
       } catch (emailError) {
         console.error('❌ Failed to send confirmation email:', emailError);
-        // Don't fail the payment if email fails
       }
 
-      // Return a test payment link that redirects to success page
       return { 
         link: `${process.env.FRONTEND_BASE_URL}/payment/result?status=success&tx_ref=${txRef}&transaction_id=${purchase.id}&token=${token}`,
         ref: txRef,
@@ -179,23 +127,32 @@ export class PaymentsService {
       };
     }
 
-    // PRODUCTION MODE: Use Paypack API
+    // PRODUCTION MODE: Use RwandaPay API
     try {
-      const accessToken = await this.getPaypackAccessToken();
+      console.log('💳 Initializing RwandaPay payment...');
+      console.log(`   Amount: ${amount} ${currency}`);
+      console.log(`   Customer: ${input.fullName}`);
 
-      const paypackResponse = await axios.post(
-        `${this.paypackBaseUrl}/transactions/cashin`,
+      const rwandapayResponse = await axios.post(
+        `${this.rwandapayBaseUrl}/payments`,
         {
-          amount: Math.round(amount), // Paypack requires integer amount
-          number: input.email, // Customer identifier (can be phone or email)
-          ref: txRef,
-          merchant_ref: purchase.id,
-          description: `Purchase: ${project.title}`,
-          webhook_url: `${process.env.BACKEND_URL}/api/payments/webhook/paypack`,
+          amount: Math.round(amount),
+          currency: currency,
+          reference: txRef,
+          customer: {
+            email: input.email,
+            name: input.fullName,
+          },
+          metadata: {
+            purchase_id: purchase.id,
+            project_name: project.title,
+          },
+          callback_url: `${process.env.FRONTEND_BASE_URL}/payment/result`,
+          webhook_url: `${process.env.BACKEND_URL}/api/payments/webhook/rwandapay`,
         },
         {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${process.env.RWANDAPAY_SECRET_KEY}`,
             'Content-Type': 'application/json',
           },
         },
@@ -206,14 +163,14 @@ export class PaymentsService {
         data: { flutterwaveRef: txRef },
       });
 
-      // Paypack returns a payment link or QR code
-      const paymentLink = paypackResponse.data?.data?.redirect_url || 
-                         paypackResponse.data?.redirect_url ||
-                         `https://payments.paypack.rw/checkout/${txRef}`;
+      const paymentLink = rwandapayResponse.data?.data?.payment_url || 
+                         rwandapayResponse.data?.payment_url ||
+                         rwandapayResponse.data?.checkout_url;
 
+      console.log('✅ RwandaPay payment initialized successfully!');
       return { link: paymentLink, ref: txRef };
     } catch (error: any) {
-      console.error('Paypack API error:', error.response?.data || error.message);
+      console.error('❌ RwandaPay API error:', error.response?.data || error.message);
       throw new BadRequestException(
         error.response?.data?.message || 'Payment initialization failed',
       );
@@ -222,35 +179,32 @@ export class PaymentsService {
 
   async handleWebhook(body: any) {
     try {
-      console.log('📨 Paypack webhook received:', JSON.stringify(body, null, 2));
+      console.log('📨 RwandaPay webhook received:', JSON.stringify(body, null, 2));
 
-      // Paypack webhook structure
-      const { ref, status, merchant_ref } = body;
+      const { reference, status, metadata } = body;
 
-      if (!ref && !merchant_ref) {
-        console.error('❌ Invalid webhook: missing ref or merchant_ref');
+      if (!reference && !metadata?.purchase_id) {
+        console.error('❌ Invalid webhook: missing reference or purchase_id');
         return { message: 'Invalid webhook data' };
       }
 
-      // Find purchase by transaction reference or merchant reference (purchase ID)
       const purchase = await this.prisma.purchase.findFirst({
         where: {
           OR: [
-            { flutterwaveRef: ref },
-            { id: merchant_ref },
+            { flutterwaveRef: reference },
+            { id: metadata?.purchase_id },
           ],
         },
       });
 
       if (!purchase) {
-        console.error(`❌ Purchase not found for ref: ${ref} or merchant_ref: ${merchant_ref}`);
+        console.error(`❌ Purchase not found for ref: ${reference}`);
         return { message: 'Purchase not found' };
       }
 
       console.log(`✅ Found purchase: ${purchase.id}, current status: ${purchase.status}`);
 
-      // Paypack status values: 'successful', 'pending', 'failed'
-      if (status === 'successful' || status === 'success') {
+      if (status === 'success' || status === 'completed' || status === 'paid') {
         const token = randomBytes(24).toString('hex');
         await this.prisma.purchase.update({
           where: { id: purchase.id },
@@ -258,14 +212,12 @@ export class PaymentsService {
         });
         console.log(`✅ Purchase ${purchase.id} marked as SUCCESS with token: ${token}`);
 
-        // Fetch project details for email
         const purchaseWithProject = await this.prisma.purchase.findUnique({
           where: { id: purchase.id },
           include: { project: true },
         });
 
         if (purchaseWithProject && purchaseWithProject.project) {
-          // Send confirmation email
           console.log('📧 Sending purchase confirmation email...');
           try {
             await this.emailService.sendProjectPurchaseEmail({
@@ -280,10 +232,9 @@ export class PaymentsService {
             console.log('✅ Confirmation email sent successfully!');
           } catch (emailError) {
             console.error('❌ Failed to send confirmation email:', emailError);
-            // Don't fail the webhook if email fails
           }
         }
-      } else if (status === 'failed' || status === 'failure') {
+      } else if (status === 'failed' || status === 'failure' || status === 'cancelled') {
         await this.prisma.purchase.update({
           where: { id: purchase.id },
           data: { status: 'FAILED' },
@@ -314,13 +265,11 @@ export class PaymentsService {
       throw new BadRequestException('Invalid token');
     }
 
-    // If purchase has a tier, filter by tier assets; otherwise return all project assets
     if (purchase.tier) {
       return purchase.project.assets.filter(
         (a) => !a.tierId || a.tierId === purchase.tierId,
       );
     } else {
-      // For simple purchases without tiers, return all project assets
       return purchase.project.assets;
     }
   }

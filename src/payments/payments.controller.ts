@@ -70,7 +70,7 @@ export class PaymentsController {
   @ApiOperation({
     summary: 'Flutterwave webhook handler (deprecated)',
     description:
-      'Legacy webhook endpoint for Flutterwave. Use /webhook/paypack instead.',
+      'Legacy webhook endpoint for Flutterwave.',
   })
   handleWebhookLegacy(@Body() body: any) {
     return this.paymentsService.handleWebhook(body);
@@ -79,9 +79,20 @@ export class PaymentsController {
   @Post('webhook/paypack')
   @ApiExcludeEndpoint()
   @ApiOperation({
-    summary: 'Paypack webhook handler',
+    summary: 'Paypack webhook handler (deprecated)',
     description:
-      'Webhook endpoint for receiving payment status updates from Paypack. This endpoint is excluded from public API documentation.',
+      'Legacy webhook endpoint for Paypack.',
+  })
+  handleWebhookPaypack(@Body() body: any) {
+    return this.paymentsService.handleWebhook(body);
+  }
+
+  @Post('webhook/rwandapay')
+  @ApiExcludeEndpoint()
+  @ApiOperation({
+    summary: 'RwandaPay webhook handler',
+    description:
+      'Webhook endpoint for receiving payment status updates from RwandaPay. This endpoint is excluded from public API documentation.',
   })
   handleWebhook(@Body() body: any) {
     return this.paymentsService.handleWebhook(body);
