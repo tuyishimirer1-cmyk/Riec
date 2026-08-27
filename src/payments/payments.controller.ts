@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, Headers } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiOkResponse,
@@ -33,6 +33,10 @@ class InitProjectCheckoutDto {
   @IsString()
   @ApiProperty({ example: 'John Doe' })
   fullName: string;
+
+  @IsString()
+  @ApiProperty({ example: '0788123456', description: 'Rwanda phone number in format 07XXXXXXXX' })
+  phone: string;
 }
 
 @ApiTags('Payment Endpoints')
@@ -94,8 +98,8 @@ export class PaymentsController {
     description:
       'Webhook endpoint for receiving payment status updates from RwandaPay. This endpoint is excluded from public API documentation.',
   })
-  handleWebhook(@Body() body: any) {
-    return this.paymentsService.handleWebhook(body);
+  handleWebhook(@Body() body: any, @Req() req: any, @Headers('x-webhook-signature') signature?: string) {
+    return this.paymentsService.handleWebhook(body, req.rawBody, signature);
   }
 
   @Get('downloads/:token')

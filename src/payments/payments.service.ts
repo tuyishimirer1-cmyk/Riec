@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import axios from 'axios';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID, createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../contact/email.service';
 
@@ -18,6 +18,7 @@ export class PaymentsService {
     tierId?: string;
     email: string;
     fullName: string;
+    phone: string;
   }) {
     // Allow either a Mongo ObjectId or a project slug to be passed as projectId
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(input.projectId);
@@ -62,6 +63,18 @@ export class PaymentsService {
       currency = 'RWF';
     }
 
+    // RwandaPay minimum is 100 RWF
+    if (amount < 100) {
+      throw new BadRequestException('Payment amount must be at least 100 RWF');
+    }
+
+    if (amount > 1_000_000) {
+      throw new BadRequestException('Payment amount cannot exceed 1,000,000 RWF');
+    }
+
+    // Normalize Rwanda phone number
+    const phone = this.normalizeRwandaPhone(input.phone);
+
     const purchase = await this.prisma.purchase.create({
       data: {
         projectId: project.id,
@@ -84,6 +97,7 @@ export class PaymentsService {
       console.log(`   Purchase ID: ${purchase.id}`);
       console.log(`   Amount: ${amount} ${currency}`);
       console.log(`   Customer: ${input.fullName} (${input.email})`);
+      console.log(`   Phone: ${phone}`);
       
       await this.prisma.purchase.update({
         where: { id: purchase.id },
@@ -128,83 +142,167 @@ export class PaymentsService {
     }
 
     // PRODUCTION MODE: Use RwandaPay API
+    const publicKey = process.env.RWANDAPAY_PUBLIC_KEY;
+    const secretKey = process.env.RWANDAPAY_SECRET_KEY;
+
+    if (!publicKey || !secretKey) {
+      throw new BadRequestException('RwandaPay API keys are not configured');
+    }
+
     try {
-      console.log('💳 Initializing RwandaPay payment...');
+      console.log('💳 Initializing RwandaPay checkout...');
       console.log(`   Amount: ${amount} ${currency}`);
       console.log(`   Customer: ${input.fullName}`);
+      console.log(`   Phone: ${phone}`);
 
-      const rwandapayResponse = await axios.post(
-        `${this.rwandapayBaseUrl}/payments`,
+      const idempotencyKey = randomUUID();
+
+      const response = await axios.post(
+        `${this.rwandapayBaseUrl}/checkout/initialize`,
         {
           amount: Math.round(amount),
-          currency: currency,
-          reference: txRef,
+          currency: 'RWF',
+          tx_ref: txRef,
           customer: {
-            email: input.email,
             name: input.fullName,
+            phone: phone,
+            email: input.email,
           },
-          metadata: {
+          description: `Purchase: ${project.title}`,
+          redirect_url: `${process.env.FRONTEND_BASE_URL}/payment/result`,
+          webhook_url: `${process.env.BACKEND_URL}/api/payments/webhook/rwandapay`,
+          meta: {
             purchase_id: purchase.id,
+            project_id: project.id,
             project_name: project.title,
           },
-          callback_url: `${process.env.FRONTEND_BASE_URL}/payment/result`,
-          webhook_url: `${process.env.BACKEND_URL}/api/payments/webhook/rwandapay`,
         },
         {
           headers: {
-            'Authorization': `Bearer ${process.env.RWANDAPAY_SECRET_KEY}`,
+            'X-Public-Key': publicKey,
+            'X-Secret-Key': secretKey,
+            'Idempotency-Key': idempotencyKey,
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
+          timeout: 30000,
         },
       );
 
+      const data = response.data;
+
+      console.log('RwandaPay response:', JSON.stringify(data, null, 2));
+
+      if (!data?.success || !data?.data?.payment_url) {
+        console.error('❌ RwandaPay did not return payment_url', data);
+        throw new BadRequestException(
+          data?.error?.message || data?.message || 'RwandaPay did not return a payment URL',
+        );
+      }
+
+      const rwandaPayReference = data.data.reference || txRef;
+
       await this.prisma.purchase.update({
         where: { id: purchase.id },
-        data: { flutterwaveRef: txRef },
+        data: { flutterwaveRef: rwandaPayReference },
       });
 
-      const paymentLink = rwandapayResponse.data?.data?.payment_url || 
-                         rwandapayResponse.data?.payment_url ||
-                         rwandapayResponse.data?.checkout_url;
+      console.log('✅ RwandaPay checkout initialized');
+      console.log(`   Reference: ${rwandaPayReference}`);
+      console.log(`   Payment URL: ${data.data.payment_url}`);
 
-      console.log('✅ RwandaPay payment initialized successfully!');
-      return { link: paymentLink, ref: txRef };
+      return { 
+        link: data.data.payment_url, 
+        ref: rwandaPayReference,
+        purchaseId: purchase.id,
+      };
     } catch (error: any) {
       console.error('❌ RwandaPay API error:', error.response?.data || error.message);
+      
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
       throw new BadRequestException(
-        error.response?.data?.message || 'Payment initialization failed',
+        error.response?.data?.error?.message || 
+        error.response?.data?.message || 
+        error.message ||
+        'Payment initialization failed',
       );
     }
   }
 
-  async handleWebhook(body: any) {
+  async handleWebhook(body: any, rawBody?: Buffer, signature?: string) {
     try {
       console.log('📨 RwandaPay webhook received:', JSON.stringify(body, null, 2));
 
-      const { reference, status, metadata } = body;
+      // Verify webhook signature
+      const webhookSecret = process.env.RWANDAPAY_WEBHOOK_SECRET;
 
-      if (!reference && !metadata?.purchase_id) {
-        console.error('❌ Invalid webhook: missing reference or purchase_id');
-        return { message: 'Invalid webhook data' };
+      if (!webhookSecret) {
+        console.error('❌ RWANDAPAY_WEBHOOK_SECRET is not configured');
+        return { message: 'Webhook secret not configured' };
+      }
+
+      if (signature && rawBody) {
+        try {
+          const expectedSignature = createHmac('sha256', webhookSecret)
+            .update(rawBody)
+            .digest('base64');
+
+          const received = Buffer.from(signature.trim());
+          const expected = Buffer.from(expectedSignature);
+
+          if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
+            console.error('❌ Invalid RwandaPay webhook signature');
+            return { message: 'Invalid webhook signature' };
+          }
+
+          console.log('✅ RwandaPay webhook signature verified');
+        } catch (verifyError) {
+          console.error('❌ Signature verification error:', verifyError);
+          return { message: 'Signature verification failed' };
+        }
+      } else {
+        console.warn('⚠️ Webhook signature not provided - skipping verification');
+      }
+
+      const eventKind = body?.event_kind;
+      const status = body?.status;
+      const paypackReference = body?.paypack_reference || body?.reference || body?.tx_ref;
+
+      if (!paypackReference) {
+        console.error('❌ Webhook missing payment reference');
+        return { message: 'Missing payment reference' };
       }
 
       const purchase = await this.prisma.purchase.findFirst({
         where: {
-          OR: [
-            { flutterwaveRef: reference },
-            { id: metadata?.purchase_id },
-          ],
+          flutterwaveRef: paypackReference,
         },
       });
 
       if (!purchase) {
-        console.error(`❌ Purchase not found for ref: ${reference}`);
+        console.error(`❌ Purchase not found for reference: ${paypackReference}`);
         return { message: 'Purchase not found' };
       }
 
       console.log(`✅ Found purchase: ${purchase.id}, current status: ${purchase.status}`);
 
-      if (status === 'success' || status === 'completed' || status === 'paid') {
+      // Avoid processing the same successful webhook twice
+      if (purchase.status === 'SUCCESS') {
+        console.log(`ℹ️ Purchase ${purchase.id} already processed`);
+        return { message: 'Webhook already processed' };
+      }
+
+      if (
+        eventKind === 'transaction:processed' ||
+        eventKind === 'payment.successful' ||
+        status === 'successful' ||
+        status === 'success' ||
+        status === 'completed' ||
+        status === 'paid'
+      ) {
         const token = randomBytes(24).toString('hex');
         await this.prisma.purchase.update({
           where: { id: purchase.id },
@@ -272,5 +370,28 @@ export class PaymentsService {
     } else {
       return purchase.project.assets;
     }
+  }
+
+  private normalizeRwandaPhone(phone: string): string {
+    const cleaned = phone.replace(/\s+/g, '').replace(/[-()]/g, '');
+
+    // Format: 07XXXXXXXX
+    if (/^07\d{8}$/.test(cleaned)) {
+      return cleaned;
+    }
+
+    // Format: 2507XXXXXXXX
+    if (/^2507\d{8}$/.test(cleaned)) {
+      return `0${cleaned.substring(3)}`;
+    }
+
+    // Format: +2507XXXXXXXX
+    if (/^\+2507\d{8}$/.test(cleaned)) {
+      return `0${cleaned.substring(4)}`;
+    }
+
+    throw new BadRequestException(
+      'Invalid Rwanda phone number. Use format: 07XXXXXXXX',
+    );
   }
 }
