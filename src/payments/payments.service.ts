@@ -234,7 +234,14 @@ export class PaymentsService {
 
   async handleWebhook(body: any, rawBody?: Buffer, signature?: string) {
     try {
-      console.log('📨 RwandaPay webhook received:', JSON.stringify(body, null, 2));
+      console.log('═══════════════════════════════════════════');
+      console.log('📨 RWANDAPAY WEBHOOK RECEIVED');
+      console.log('═══════════════════════════════════════════');
+      console.log('Timestamp:', new Date().toISOString());
+      console.log('Signature Header:', signature ? 'Present' : 'Missing');
+      console.log('Raw Body Length:', rawBody?.length || 0);
+      console.log('Webhook Body:', JSON.stringify(body, null, 2));
+      console.log('═══════════════════════════════════════════');
 
       // Verify webhook signature
       const webhookSecret = process.env.RWANDAPAY_WEBHOOK_SECRET;
@@ -255,6 +262,8 @@ export class PaymentsService {
 
           if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
             console.error('❌ Invalid RwandaPay webhook signature');
+            console.error('   Expected length:', expected.length);
+            console.error('   Received length:', received.length);
             return { message: 'Invalid webhook signature' };
           }
 
@@ -267,12 +276,18 @@ export class PaymentsService {
         console.warn('⚠️ Webhook signature not provided - skipping verification');
       }
 
-      const eventKind = body?.event_kind;
-      const status = body?.status;
-      const paypackReference = body?.paypack_reference || body?.reference || body?.tx_ref;
+      const eventKind = body?.event_kind || body?.event;
+      const status = body?.status || body?.data?.status;
+      const paypackReference = body?.paypack_reference || body?.reference || body?.tx_ref || body?.data?.reference || body?.data?.tx_ref;
+
+      console.log('Extracted Fields:');
+      console.log('  - Event:', eventKind);
+      console.log('  - Status:', status);
+      console.log('  - Reference:', paypackReference);
 
       if (!paypackReference) {
         console.error('❌ Webhook missing payment reference');
+        console.error('   Tried fields: paypack_reference, reference, tx_ref, data.reference, data.tx_ref');
         return { message: 'Missing payment reference' };
       }
 
@@ -298,6 +313,7 @@ export class PaymentsService {
       if (
         eventKind === 'transaction:processed' ||
         eventKind === 'payment.successful' ||
+        eventKind === 'checkout.completed' ||
         status === 'successful' ||
         status === 'success' ||
         status === 'completed' ||
@@ -345,6 +361,7 @@ export class PaymentsService {
       return { message: 'Webhook processed successfully' };
     } catch (error: any) {
       console.error('❌ Webhook processing error:', error.message);
+      console.error('   Stack:', error.stack);
       return { message: 'Webhook processing failed', error: error.message };
     }
   }
@@ -370,6 +387,69 @@ export class PaymentsService {
     } else {
       return purchase.project.assets;
     }
+  }
+
+  async manuallyProcessPayment(reference: string) {
+    console.log(`🔧 Manual payment processing for reference: ${reference}`);
+
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { flutterwaveRef: reference },
+      include: { project: true },
+    });
+
+    if (!purchase) {
+      console.error(`❌ Purchase not found for reference: ${reference}`);
+      throw new BadRequestException('Purchase not found for this reference');
+    }
+
+    console.log(`✅ Found purchase: ${purchase.id}, current status: ${purchase.status}`);
+
+    if (purchase.status === 'SUCCESS') {
+      console.log(`ℹ️ Purchase already processed. Token: ${purchase.downloadToken}`);
+      return { 
+        message: 'Payment already processed', 
+        token: purchase.downloadToken,
+        purchaseId: purchase.id,
+        projectName: purchase.project.title,
+      };
+    }
+
+    // Generate token and update status
+    const token = randomBytes(24).toString('hex');
+    await this.prisma.purchase.update({
+      where: { id: purchase.id },
+      data: { status: 'SUCCESS', downloadToken: token },
+    });
+
+    console.log(`✅ Purchase ${purchase.id} marked as SUCCESS with token: ${token}`);
+
+    // Send confirmation email
+    console.log('📧 Sending purchase confirmation email...');
+    try {
+      await this.emailService.sendProjectPurchaseEmail({
+        to: purchase.email,
+        customerName: purchase.fullName,
+        projectName: purchase.project.title,
+        projectDescription: purchase.project.description || undefined,
+        downloadToken: token,
+        transactionId: purchase.id,
+        amount: `${purchase.amount.toLocaleString()} ${purchase.currency}`,
+      });
+      console.log('✅ Confirmation email sent successfully!');
+    } catch (emailError) {
+      console.error('❌ Failed to send confirmation email:', emailError);
+      throw new BadRequestException(
+        `Payment processed but email failed: ${emailError.message}. Token: ${token}`,
+      );
+    }
+
+    return { 
+      message: 'Payment processed successfully', 
+      token,
+      purchaseId: purchase.id,
+      projectName: purchase.project.title,
+      email: purchase.email,
+    };
   }
 
   private normalizeRwandaPhone(phone: string): string {

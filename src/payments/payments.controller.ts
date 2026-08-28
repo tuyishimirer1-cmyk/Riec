@@ -102,6 +102,37 @@ export class PaymentsController {
     return this.paymentsService.handleWebhook(body, req.rawBody, signature);
   }
 
+  @Post('manual-process/:reference')
+  @ResponseMessage('Payment processed manually')
+  @ApiOperation({
+    summary: 'Manually process a completed payment (Admin)',
+    description:
+      'Use this endpoint to manually complete a payment that was successful on RwandaPay but webhook processing failed. Generates download token and sends confirmation email.',
+  })
+  @ApiParam({
+    name: 'reference',
+    description: 'RwandaPay transaction reference (e.g., CHK-QVWWH1RFMX1FYHZD)',
+    example: 'CHK-QVWWH1RFMX1FYHZD',
+  })
+  @ApiOkResponse({
+    description: 'Payment processed successfully, email sent',
+    schema: {
+      example: {
+        message: 'Payment processed successfully',
+        token: 'abc123def456...',
+        purchaseId: '65f34e7e0a2b3c4d5e6f7890',
+        projectName: 'Modern Family Villa',
+        email: 'customer@example.com',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Purchase not found or email sending failed',
+  })
+  manualProcessPayment(@Param('reference') reference: string) {
+    return this.paymentsService.manuallyProcessPayment(reference);
+  }
+
   @Get('downloads/:token')
   @ResponseMessage('Downloads retrieved successfully')
   @ApiOperation({
