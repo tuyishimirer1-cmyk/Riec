@@ -375,23 +375,28 @@ export class PaymentsService {
   private normalizeRwandaPhone(phone: string): string {
     const cleaned = phone.replace(/\s+/g, '').replace(/[-()]/g, '');
 
-    // Format: 07XXXXXXXX
+    // Format: 07XXXXXXXX (convert to 2507XXXXXXXX for RwandaPay)
     if (/^07\d{8}$/.test(cleaned)) {
+      return `250${cleaned.substring(1)}`; // Remove leading 0, add 250
+    }
+
+    // Format: 2507XXXXXXXX (already correct)
+    if (/^2507\d{8}$/.test(cleaned)) {
       return cleaned;
     }
 
-    // Format: 2507XXXXXXXX
-    if (/^2507\d{8}$/.test(cleaned)) {
-      return `0${cleaned.substring(3)}`;
+    // Format: +2507XXXXXXXX (remove +)
+    if (/^\+2507\d{8}$/.test(cleaned)) {
+      return cleaned.substring(1);
     }
 
-    // Format: +2507XXXXXXXX
-    if (/^\+2507\d{8}$/.test(cleaned)) {
-      return `0${cleaned.substring(4)}`;
+    // Format: 7XXXXXXXX (missing leading 0, add 250)
+    if (/^7\d{8}$/.test(cleaned)) {
+      return `250${cleaned}`;
     }
 
     throw new BadRequestException(
-      'Invalid Rwanda phone number. Use format: 07XXXXXXXX',
+      'Invalid Rwanda phone number. Use format: 07XXXXXXXX or 2507XXXXXXXX',
     );
   }
 }
