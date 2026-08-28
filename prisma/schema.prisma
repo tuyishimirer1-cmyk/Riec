@@ -63,6 +63,64 @@ enum Role {
   ADMIN
 }
 
+enum PropertyType {
+  HOUSE
+  APARTMENT
+  LAND
+  COMMERCIAL
+  VILLA
+  OTHER
+}
+
+enum ListingType {
+  FOR_SALE
+  FOR_RENT
+}
+
+enum PropertyStatus {
+  DRAFT
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+  PUBLISHED
+  RESERVED
+  SOLD
+  RENTED
+  ARCHIVED
+}
+
+enum PropertyVerificationStatus {
+  NOT_VERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PropertyDocumentType {
+  OWNERSHIP_TITLE
+  IDENTIFICATION
+  TAX_CLEARANCE
+  LAND_TITLE
+  UPI_CERTIFICATE
+  BUILDING_PERMIT
+  OTHER
+}
+
+enum InquiryStatus {
+  NEW
+  READ
+  RESPONDED
+  CLOSED
+}
+
+enum ViewingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
 type ServiceTask {
   title       String
   description String
@@ -84,7 +142,14 @@ model User {
   projectsOwned  Project[]           @relation("ProjectOwner")
   uploadedAssets ProjectAsset[]      @relation("UploadedAssets")
   assignments    ProjectAssignment[]
-  favorites      Favorite[]         @relation("UserFavorites")
+  favorites      Favorite[]          @relation("UserFavorites")
+  
+  // Properties relations
+  properties           Property[]            @relation("PropertyOwner")
+  propertyFavorites    PropertyFavorite[]    @relation("UserPropertyFavorites")
+  propertyInquiries    PropertyInquiry[]     @relation("UserPropertyInquiries")
+  propertyViewings     PropertyViewing[]     @relation("UserPropertyViewings")
+  verifiedProperties   Property[]            @relation("VerifiedProperties")
 }
 
 model Service {
@@ -314,4 +379,233 @@ model Favorite {
   @@unique([userId, projectId])
   @@index([userId])
   @@index([projectId])
+}
+
+
+// ============================================
+// PROPERTIES MARKETPLACE MODELS
+// ============================================
+
+model Property {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  slug        String       @unique
+  description String
+  
+  // Property Type & Listing
+  propertyType PropertyType
+  listingType  ListingType
+  
+  // Price
+  price        Float
+  currency     String       @default("RWF")
+  priceNegotiable Boolean   @default(false)
+  
+  // Location
+  district     String
+  sector       String
+  cell         String
+  streetAddress String?
+  latitude     Float?
+  longitude    Float?
+  
+  // Property Details
+  landSize     Float          // in square meters
+  buildingSize Float?         // in square meters (for houses/apartments)
+  bedrooms     Int?
+  bathrooms    Int?
+  parking      Int?           @default(0)
+  amenities    String[]       // Array of amenities
+  
+  // Status & Verification
+  status               PropertyStatus               @default(DRAFT)
+  verificationStatus   PropertyVerificationStatus   @default(NOT_VERIFIED)
+  verifiedAt           DateTime?
+  verifiedById         String?                      @db.ObjectId
+  verifiedBy           User?                        @relation("VerifiedProperties", fields: [verifiedById], references: [id])
+  rejectionReason      String?
+  
+  // Featured & Availability
+  isFeatured    Boolean   @default(false)
+  featuredUntil DateTime?
+  isAvailable   Boolean   @default(true)
+  
+  // Seller/Agent Information
+  sellerId      String    @db.ObjectId
+  seller        User      @relation("PropertyOwner", fields: [sellerId], references: [id])
+  sellerPhone   String
+  sellerWhatsApp String?
+  sellerEmail   String
+  
+  // SEO & Metadata
+  viewCount     Int       @default(0)
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  publishedAt   DateTime?
+  
+  // Relations
+  images       PropertyImage[]      @relation("PropertyImages")
+  videos       PropertyVideo[]      @relation("PropertyVideos")
+  documents    PropertyDocument[]   @relation("PropertyDocuments")
+  favorites    PropertyFavorite[]   @relation("PropertyFavorites")
+  inquiries    PropertyInquiry[]    @relation("PropertyInquiries")
+  viewings     PropertyViewing[]    @relation("PropertyViewings")
+  payments     PropertyPayment[]    @relation("PropertyPayments")
+  
+  @@index([status])
+  @@index([propertyType])
+  @@index([listingType])
+  @@index([district])
+  @@index([sellerId])
+  @@index([verificationStatus])
+  @@index([isFeatured])
+  @@index([createdAt])
+}
+
+model PropertyImage {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId   String   @db.ObjectId
+  property     Property @relation("PropertyImages", fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  cloudinaryId String
+  url          String
+  thumbnailUrl String?
+  caption      String?
+  order        Int      @default(0)
+  
+  createdAt    DateTime @default(now())
+  
+  @@index([propertyId])
+  @@index([order])
+}
+
+model PropertyVideo {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId   String   @db.ObjectId
+  property     Property @relation("PropertyVideos", fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  cloudinaryId String
+  url          String
+  thumbnailUrl String?
+  duration     Int?     // in seconds
+  order        Int      @default(0)
+  
+  createdAt    DateTime @default(now())
+  
+  @@index([propertyId])
+}
+
+model PropertyDocument {
+  id           String                @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId   String                @db.ObjectId
+  property     Property              @relation("PropertyDocuments", fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  documentType PropertyDocumentType
+  cloudinaryId String
+  url          String                // Secure URL (private)
+  filename     String
+  fileSize     Int                   // in bytes
+  mimeType     String
+  
+  createdAt    DateTime              @default(now())
+  
+  @@index([propertyId])
+}
+
+model PropertyFavorite {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  propertyId String   @db.ObjectId
+  createdAt  DateTime @default(now())
+  
+  user       User     @relation("UserPropertyFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation("PropertyFavorites", fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([propertyId])
+}
+
+model PropertyInquiry {
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId String        @db.ObjectId
+  property   Property      @relation("PropertyInquiries", fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  userId     String?       @db.ObjectId
+  user       User?         @relation("UserPropertyInquiries", fields: [userId], references: [id])
+  
+  // Contact Info (for non-registered users)
+  name       String
+  email      String
+  phone      String
+  message    String
+  
+  status     InquiryStatus @default(NEW)
+  reply      String?
+  repliedAt  DateTime?
+  
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  
+  @@index([propertyId])
+  @@index([userId])
+  @@index([status])
+}
+
+model PropertyViewing {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId      String        @db.ObjectId
+  property        Property      @relation("PropertyViewings", fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  userId          String?       @db.ObjectId
+  user            User?         @relation("UserPropertyViewings", fields: [userId], references: [id])
+  
+  // Contact Info
+  name            String
+  email           String
+  phone           String
+  preferredDate   DateTime
+  preferredTime   String
+  message         String?
+  
+  status          ViewingStatus @default(PENDING)
+  adminNotes      String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([propertyId])
+  @@index([userId])
+  @@index([status])
+}
+
+model PropertyPayment {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId      String         @db.ObjectId
+  property        Property       @relation("PropertyPayments", fields: [propertyId], references: [id])
+  
+  // Payment details
+  packageType     String         // "basic_listing", "featured_listing", "verification_fee"
+  amount          Float
+  currency        String         @default("RWF")
+  
+  // Payment Gateway (RwandaPay)
+  rwandapayRef    String
+  status          PurchaseStatus @default(PENDING)
+  
+  // Customer details
+  customerEmail   String
+  customerName    String
+  customerPhone   String
+  
+  // Timestamps
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  paidAt          DateTime?
+  
+  @@index([propertyId])
+  @@index([rwandapayRef])
+  @@index([status])
 }
