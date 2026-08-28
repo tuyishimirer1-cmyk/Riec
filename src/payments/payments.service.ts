@@ -6,7 +6,7 @@ import { EmailService } from '../contact/email.service';
 
 @Injectable()
 export class PaymentsService {
-  private readonly rwandapayBaseUrl = 'https://api.rwandapay.rw/v1';
+  private readonly rwandapayBaseUrl = 'https://pay.rwandapay.rw/api/v1';
   
   constructor(
     private readonly prisma: PrismaService,
