@@ -22,6 +22,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { SearchModule } from './search/search.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SettingsModule } from './settings/settings.module';
+import { PropertiesModule } from './properties/properties.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -47,6 +48,7 @@ import { AppService } from './app.service';
     CareersModule,
     ApplicationsModule,
     PaymentsModule,
+    PropertiesModule,
     SearchModule,
     DashboardModule,
     SettingsModule,
