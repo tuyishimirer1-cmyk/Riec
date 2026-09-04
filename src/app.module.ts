@@ -32,6 +32,7 @@ import { AppService } from './app.service';
     PrismaModule,
     CloudinaryModule,
     AuthModule,
+    PropertiesModule, // Properties marketplace
     ProjectsModule,
     ProjectImagesModule,
     ProjectAssetsModule,
@@ -48,7 +49,7 @@ import { AppService } from './app.service';
     CareersModule,
     ApplicationsModule,
     PaymentsModule,
-    PropertiesModule,
+    PropertiesModule, // Real estate marketplace
     SearchModule,
     DashboardModule,
     SettingsModule,
