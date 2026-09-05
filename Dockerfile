@@ -47,6 +47,6 @@ RUN yarn install --production --frozen-lockfile --ignore-scripts && yarn cache c
 
 EXPOSE 3000
 
-# ---- Prisma Runtime Initialization ----
-# For MongoDB: validate connection + optionally push schema
-CMD npx prisma generate && node dist/src/main.js
+# ---- Start Application ----
+# Prisma client already generated in builder stage
+CMD node dist/src/main.js

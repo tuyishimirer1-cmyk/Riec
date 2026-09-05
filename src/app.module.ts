@@ -49,7 +49,6 @@ import { AppService } from './app.service';
     CareersModule,
     ApplicationsModule,
     PaymentsModule,
-    PropertiesModule, // Real estate marketplace
     SearchModule,
     DashboardModule,
     SettingsModule,
