@@ -21,6 +21,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed:admin": "ts-node scripts/seed-admin.ts",
+    "update:admin": "node scripts/update-admin-role.js",
     "migrate:admin": "ts-node scripts/migrate-admin-to-user.ts",
     "publish:all": "ts-node scripts/publish-all-projects.ts"
   },
