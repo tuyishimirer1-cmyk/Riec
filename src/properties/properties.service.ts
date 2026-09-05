@@ -31,13 +31,31 @@ export class PropertiesService {
   async create(createPropertyDto: CreatePropertyDto, userId: string) {
     const slug = await this.generateSlug(createPropertyDto.title);
 
+    // Check if user is admin
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    const isAdmin = user?.role === 'ADMIN';
+
+    // Auto-publish and verify if admin creates property
+    const status = isAdmin ? 'PUBLISHED' : 'DRAFT';
+    const verificationStatus = isAdmin ? 'VERIFIED' : 'NOT_VERIFIED';
+    const publishedAt = isAdmin ? new Date() : null;
+    const verifiedAt = isAdmin ? new Date() : null;
+    const verifiedById = isAdmin ? userId : null;
+
     const property = await this.prisma.property.create({
       data: {
         ...createPropertyDto,
         slug,
         sellerId: userId,
-        status: 'DRAFT',
-        verificationStatus: 'NOT_VERIFIED',
+        status,
+        verificationStatus,
+        publishedAt,
+        verifiedAt,
+        verifiedById,
         currency: createPropertyDto.currency || 'RWF',
       },
       include: {
