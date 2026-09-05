@@ -26,7 +26,7 @@ import { PropertyInquiryDto, PropertyViewingDto } from './dto/property-inquiry.d
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { Role } from '@prisma/client';
+import { Role } from '../auth/role.enum';
 
 @ApiTags('Properties')
 @Controller('properties')
