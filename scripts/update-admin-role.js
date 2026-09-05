@@ -4,10 +4,25 @@ const { PrismaClient } = require('@prisma/client');
 async function main() {
   const prisma = new PrismaClient();
 
+  // Update the user with this email to have ADMIN role
+  const adminEmail = 'izerelibert@gmail.com';
+
   try {
-    // Update the user with email admin@example.com to have ADMIN role
+    // Check if user exists first
+    const existingUser = await prisma.user.findUnique({
+      where: { email: adminEmail },
+    });
+
+    if (!existingUser) {
+      console.log(`❌ User with email ${adminEmail} not found in database.`);
+      console.log('   Please check the email address.');
+      process.exitCode = 1;
+      return;
+    }
+
+    // Update the user role to ADMIN
     const user = await prisma.user.update({
-      where: { email: 'admin@example.com' },
+      where: { email: adminEmail },
       data: { role: 'ADMIN' },
     });
 
