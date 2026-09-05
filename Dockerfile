@@ -49,4 +49,4 @@ EXPOSE 3000
 
 # ---- Prisma Runtime Initialization ----
 # For MongoDB: validate connection + optionally push schema
-CMD npx prisma db push && node dist/src/main.js
+CMD npx prisma generate && node dist/src/main.js
