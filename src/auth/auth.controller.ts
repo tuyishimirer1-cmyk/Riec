@@ -172,6 +172,26 @@ export class AuthController {
     return this.authService.registerClient(email, password);
   }
 
+  @Post('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ResponseMessage('Current user details')
+  @ApiOperation({
+    summary: 'Get current logged-in user details',
+    description: 'Returns the current authenticated user information including role',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current user details',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid access token',
+  })
+  async me(@Req() req: Request) {
+    const user = (req as any).user as { userId?: string } | undefined;
+    return this.authService.getUserDetails(user?.userId);
+  }
+
   // TODO: Enable Firebase authentication when Firebase credentials are configured
   // @Post('firebase')
   // @ResponseMessage('Firebase authentication successful')

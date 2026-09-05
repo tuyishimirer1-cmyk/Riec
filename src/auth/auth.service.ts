@@ -250,4 +250,32 @@ export class AuthService {
       },
     };
   }
+
+  /**
+   * Get current user details
+   */
+  async getUserDetails(userId: string | undefined) {
+    if (!userId) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+
+    const user = await (this.prisma as any).user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        profileImg: true,
+        coverImg: true,
+        createdAt: true,
+        lastLoginAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return user;
+  }
 }
