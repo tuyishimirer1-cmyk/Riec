@@ -34,17 +34,25 @@ export class PropertiesService {
     // Check if user is admin
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: { role: true, email: true },
     });
 
-    const isAdmin = user?.role === 'ADMIN';
+    console.log('🔍 Property Creation Debug:');
+    console.log('   User ID:', userId);
+    console.log('   User Email:', user?.email);
+    console.log('   User Role:', user?.role);
+    
+    // ALWAYS AUTO-PUBLISH ALL PROPERTIES (regardless of role)
+    // Simpler workflow for your use case
+    const status = 'PUBLISHED';
+    const verificationStatus = 'VERIFIED';
+    const publishedAt = new Date();
+    const verifiedAt = new Date();
+    const verifiedById = userId;
 
-    // Auto-publish and verify if admin creates property
-    const status = isAdmin ? 'PUBLISHED' : 'DRAFT';
-    const verificationStatus = isAdmin ? 'VERIFIED' : 'NOT_VERIFIED';
-    const publishedAt = isAdmin ? new Date() : null;
-    const verifiedAt = isAdmin ? new Date() : null;
-    const verifiedById = isAdmin ? userId : null;
+    console.log('   Property Status:', status);
+    console.log('   Verification Status:', verificationStatus);
+    console.log('   ✅ AUTO-PUBLISHING ALL PROPERTIES');
 
     const property = await this.prisma.property.create({
       data: {

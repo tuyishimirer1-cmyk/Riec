@@ -278,4 +278,28 @@ export class AuthService {
 
     return user;
   }
+
+  /**
+   * Promote current user to ADMIN role
+   */
+  async promoteToAdmin(userId: string | undefined) {
+    if (!userId) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+
+    const user = await (this.prisma as any).user.update({
+      where: { id: userId },
+      data: { role: Role.ADMIN },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    return {
+      message: 'User promoted to ADMIN successfully',
+      user,
+    };
+  }
 }

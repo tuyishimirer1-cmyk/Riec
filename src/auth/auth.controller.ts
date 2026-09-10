@@ -192,6 +192,23 @@ export class AuthController {
     return this.authService.getUserDetails(user?.userId);
   }
 
+  @Post('promote-to-admin')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ResponseMessage('User promoted to admin')
+  @ApiOperation({
+    summary: 'Promote current user to ADMIN role (development only)',
+    description: 'Promotes the currently logged-in user to ADMIN role. For development use.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User promoted to admin successfully',
+  })
+  async promoteToAdmin(@Req() req: Request) {
+    const user = (req as any).user as { userId?: string } | undefined;
+    return this.authService.promoteToAdmin(user?.userId);
+  }
+
   // TODO: Enable Firebase authentication when Firebase credentials are configured
   // @Post('firebase')
   // @ResponseMessage('Firebase authentication successful')
