@@ -41,6 +41,7 @@ export class PropertiesService {
     console.log('   User ID:', userId);
     console.log('   User Email:', user?.email);
     console.log('   User Role:', user?.role);
+    console.log('   🚀 FORCE DEPLOY - Auto-publishing enabled!');
     
     // ALWAYS AUTO-PUBLISH ALL PROPERTIES (regardless of role)
     // Simpler workflow for your use case
