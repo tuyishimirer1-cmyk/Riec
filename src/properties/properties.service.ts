@@ -306,10 +306,13 @@ export class PropertiesService {
       slug = await this.generateSlug(updatePropertyDto.title);
     }
 
+    // Extract images and videos from DTO (if present)
+    const { images, videos, ...propertyData } = updatePropertyDto as any;
+
     return this.prisma.property.update({
       where: { id },
       data: {
-        ...updatePropertyDto,
+        ...propertyData,
         slug,
         updatedAt: new Date(),
       },
