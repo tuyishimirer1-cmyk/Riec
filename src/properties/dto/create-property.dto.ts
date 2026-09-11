@@ -126,4 +126,20 @@ export class CreatePropertyDto {
   @ApiProperty({ example: 'seller@example.com' })
   @IsEmail()
   sellerEmail: string;
+
+  @ApiPropertyOptional({ 
+    example: [{ url: 'https://res.cloudinary.com/...', publicId: 'abc123' }],
+    description: 'Array of image objects with url and publicId from Cloudinary'
+  })
+  @IsArray()
+  @IsOptional()
+  images?: Array<{ url: string; publicId: string }>;
+
+  @ApiPropertyOptional({ 
+    example: [{ url: 'https://res.cloudinary.com/...', publicId: 'vid123' }],
+    description: 'Array of video objects with url and publicId from Cloudinary'
+  })
+  @IsArray()
+  @IsOptional()
+  videos?: Array<{ url: string; publicId: string }>;
 }

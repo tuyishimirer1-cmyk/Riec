@@ -55,9 +55,13 @@ export class PropertiesService {
     console.log('   Verification Status:', verificationStatus);
     console.log('   ✅ AUTO-PUBLISHING ALL PROPERTIES');
 
+    // Extract images and videos from DTO
+    const { images, videos, ...propertyData } = createPropertyDto;
+
+    // Create property with images and videos as nested creates
     const property = await this.prisma.property.create({
       data: {
-        ...createPropertyDto,
+        ...propertyData,
         slug,
         sellerId: userId,
         status,
@@ -65,14 +69,38 @@ export class PropertiesService {
         publishedAt,
         verifiedAt,
         verifiedById,
-        currency: createPropertyDto.currency || 'RWF',
+        currency: propertyData.currency || 'RWF',
+        // Create related images if provided
+        ...(images && images.length > 0 && {
+          images: {
+            create: images.map((img, index) => ({
+              cloudinaryId: img.publicId,
+              url: img.url,
+              order: index,
+            })),
+          },
+        }),
+        // Create related videos if provided
+        ...(videos && videos.length > 0 && {
+          videos: {
+            create: videos.map((vid, index) => ({
+              cloudinaryId: vid.publicId,
+              url: vid.url,
+              order: index,
+            })),
+          },
+        }),
       },
       include: {
         seller: {
           select: { id: true, email: true, role: true },
         },
+        images: true,
+        videos: true,
       },
     });
+
+    console.log('   ✅ Property created with', property.images?.length || 0, 'images and', property.videos?.length || 0, 'videos');
 
     return property;
   }
@@ -152,7 +180,9 @@ export class PropertiesService {
         include: {
           images: {
             orderBy: { order: 'asc' },
-            take: 1,
+          },
+          videos: {
+            orderBy: { order: 'asc' },
           },
           _count: {
             select: {
@@ -190,7 +220,9 @@ export class PropertiesService {
       include: {
         images: {
           orderBy: { order: 'asc' },
-          take: 1,
+        },
+        videos: {
+          orderBy: { order: 'asc' },
         },
       },
     });
