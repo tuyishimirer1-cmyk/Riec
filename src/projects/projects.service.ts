@@ -335,7 +335,7 @@ export class ProjectsService {
       // Delete project images
       await tx.projectImage.deleteMany({ where: { projectId: project.id } });
       
-      // Delete project pricing tiers
+      // Delete project pricing tiers (and their related data)
       await tx.projectPriceTier.deleteMany({ where: { projectId: project.id } });
       
       // Delete project assets
@@ -344,8 +344,12 @@ export class ProjectsService {
       // Delete project assignments
       await tx.projectAssignment.deleteMany({ where: { projectId: project.id } });
       
-      // Note: Purchases are kept for records (change to deleteMany if needed)
-      // await tx.purchase.deleteMany({ where: { projectId: project.id } });
+      // Delete favorites
+      await tx.favorite.deleteMany({ where: { projectId: project.id } });
+      
+      // Delete purchases (keep for records or delete - you decide)
+      // For now, we'll delete them to allow project deletion
+      await tx.purchase.deleteMany({ where: { projectId: project.id } });
       
       // Finally, delete the project itself
       await tx.project.delete({ where: { id: project.id } });
