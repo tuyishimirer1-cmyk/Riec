@@ -10,7 +10,7 @@ import {
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from './cloudinary.service';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('Cloudinary')
 @Controller('cloudinary')
@@ -25,7 +25,7 @@ export class CloudinaryController {
   @ApiOperation({ summary: 'Upload multiple images to Cloudinary' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FilesInterceptor('files', 20)) // Max 20 files
-  async uploadMultipleImages(@UploadedFiles() files: Express.Multer.File[]) {
+  async uploadMultipleImages(@UploadedFiles() files: Array<any>) {
     this.logger.log(`📸 Upload multiple images request received`);
     this.logger.log(`   Files count: ${files?.length || 0}`);
 
@@ -90,7 +90,7 @@ export class CloudinaryController {
   @ApiOperation({ summary: 'Upload videos to Cloudinary' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FilesInterceptor('files', 5)) // Max 5 videos
-  async uploadVideos(@UploadedFiles() files: Express.Multer.File[]) {
+  async uploadVideos(@UploadedFiles() files: Array<any>) {
     this.logger.log(`🎥 Upload videos request received`);
     this.logger.log(`   Files count: ${files?.length || 0}`);
 

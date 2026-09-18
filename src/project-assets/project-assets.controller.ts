@@ -280,6 +280,13 @@ export class ProjectAssetsController {
   @ApiNotFoundResponse({
     description: 'Asset not found or does not belong to the project',
   })
+  update(
+    @Param('projectId') projectId: string,
+    @Param('assetId') assetId: string,
+    @Body() body: { isDownloadable?: boolean; version?: string },
+  ) {
+    return this.service.update(projectId, assetId, body);
+  }
 
   @Delete(':assetId')
   @UseGuards(JwtAuthGuard)
@@ -343,5 +350,90 @@ export class ProjectAssetsController {
   })
   download(@Param('projectId') projectId: string, @Param('assetId') assetId: string) {
     return this.service.getDownloadUrl(projectId, assetId);
+  }
+
+  @Get(':assetId/zip/contents')
+  @ResponseMessage('ZIP contents retrieved successfully')
+  @ApiOperation({
+    summary: 'List contents of a ZIP file',
+    description:
+      'Extract and list all files contained within a ZIP archive without downloading the entire ZIP. Returns file names, paths, sizes, and MIME types.',
+  })
+  @ApiParam({
+    name: 'projectId',
+    description: 'MongoDB ObjectId of the project',
+    example: '65f34e7e0a2b3c4d5e6f7890',
+  })
+  @ApiParam({
+    name: 'assetId',
+    description: 'MongoDB ObjectId of the ZIP asset',
+    example: '65f34e7e0a2b3c4d5e6f7891',
+  })
+  @ApiOkResponse({
+    description: 'List of files in the ZIP',
+    schema: {
+      example: {
+        zipFilename: 'house_plans.zip',
+        totalFiles: 15,
+        totalSize: 15728640,
+        contents: [
+          {
+            filename: 'floor_plan.pdf',
+            path: 'plans/floor_plan.pdf',
+            size: 2048576,
+            isDirectory: false,
+            mimeType: 'application/pdf',
+          },
+          {
+            filename: 'elevation.dwg',
+            path: 'drawings/elevation.dwg',
+            size: 5242880,
+            isDirectory: false,
+            mimeType: 'application/dwg',
+          },
+        ],
+      },
+    },
+  })
+  getZipContents(@Param('projectId') projectId: string, @Param('assetId') assetId: string) {
+    return this.service.getZipContents(projectId, assetId);
+  }
+
+  @Get(':assetId/zip/file')
+  @ResponseMessage('File extracted from ZIP successfully')
+  @ApiOperation({
+    summary: 'Extract and download a specific file from within a ZIP',
+    description:
+      'Extract a single file from a ZIP archive and return it for download. Use the file path returned from the /zip/contents endpoint.',
+  })
+  @ApiParam({
+    name: 'projectId',
+    description: 'MongoDB ObjectId of the project',
+    example: '65f34e7e0a2b3c4d5e6f7890',
+  })
+  @ApiParam({
+    name: 'assetId',
+    description: 'MongoDB ObjectId of the ZIP asset',
+    example: '65f34e7e0a2b3c4d5e6f7891',
+  })
+  @ApiQuery({
+    name: 'filePath',
+    required: true,
+    description: 'Path of the file inside the ZIP (from /zip/contents response)',
+    example: 'plans/floor_plan.pdf',
+  })
+  @ApiOkResponse({
+    description: 'File extracted and ready for download',
+    schema: {
+      type: 'string',
+      format: 'binary',
+    },
+  })
+  async getZipFile(
+    @Param('projectId') projectId: string,
+    @Param('assetId') assetId: string,
+    @Query('filePath') filePath: string,
+  ) {
+    return this.service.getZipFileContent(projectId, assetId, filePath);
   }
 }

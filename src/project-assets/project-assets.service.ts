@@ -4,15 +4,22 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { paginate } from '../common/utils/pagination.util';
 import { ProjectDocumentType } from '@prisma/client';
+import AdmZip from 'adm-zip';
+import axios from 'axios';
+import * as mime from 'mime-types';
 
 @Injectable()
 export class ProjectAssetsService {
+  private readonly logger = new Logger(ProjectAssetsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinary: CloudinaryService,
@@ -125,5 +132,124 @@ export class ProjectAssetsService {
     // For documents/PDFs, we need to get the direct Cloudinary URL without transformations
     const url = await this.cloudinary.generateSignedUrl(asset.s3Key, asset.fileType);
     return { url, filename: asset.filename, fileType: asset.fileType };
+  }
+
+  /**
+   * Extract and list contents of a ZIP file
+   */
+  async getZipContents(projectId: string, assetId: string) {
+    const asset = await this.findAssetOrFail(projectId, assetId);
+    
+    if (!asset.fileType.includes('zip')) {
+      throw new BadRequestException('Asset is not a ZIP file');
+    }
+
+    if (!asset.isDownloadable) {
+      throw new ForbiddenException('Asset is not downloadable');
+    }
+
+    this.logger.log(`📦 Extracting ZIP contents for asset: ${asset.filename}`);
+
+    try {
+      // Get Cloudinary URL and download the ZIP file
+      const url = await this.cloudinary.generateSignedUrl(asset.s3Key, asset.fileType);
+      
+      this.logger.log(`📥 Downloading ZIP from: ${url}`);
+      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      const zipBuffer = Buffer.from(response.data);
+
+      this.logger.log(`✅ ZIP downloaded, size: ${zipBuffer.length} bytes`);
+
+      // Extract ZIP contents
+      const zip = new AdmZip(zipBuffer);
+      const zipEntries = zip.getEntries();
+
+      const contents = zipEntries
+        .filter((entry) => !entry.isDirectory) // Only include files
+        .map((entry) => {
+          const mimeType = mime.lookup(entry.entryName) || 'application/octet-stream';
+          
+          return {
+            filename: entry.name,
+            path: entry.entryName,
+            size: entry.header.size,
+            isDirectory: entry.isDirectory,
+            mimeType,
+          };
+        });
+
+      this.logger.log(`✅ Extracted ${contents.length} files from ZIP`);
+
+      return {
+        zipFilename: asset.filename,
+        totalFiles: contents.length,
+        totalSize: asset.size,
+        contents,
+      };
+    } catch (error) {
+      this.logger.error(`❌ Failed to extract ZIP: ${error.message}`);
+      throw new BadRequestException(`Failed to extract ZIP file: ${error.message}`);
+    }
+  }
+
+  /**
+   * Extract and download a specific file from within a ZIP
+   */
+  async getZipFileContent(projectId: string, assetId: string, filePath: string) {
+    const asset = await this.findAssetOrFail(projectId, assetId);
+    
+    if (!asset.fileType.includes('zip')) {
+      throw new BadRequestException('Asset is not a ZIP file');
+    }
+
+    if (!asset.isDownloadable) {
+      throw new ForbiddenException('Asset is not downloadable');
+    }
+
+    this.logger.log(`📄 Extracting file from ZIP: ${filePath}`);
+
+    try {
+      // Get Cloudinary URL and download the ZIP file
+      const url = await this.cloudinary.generateSignedUrl(asset.s3Key, asset.fileType);
+      
+      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      const zipBuffer = Buffer.from(response.data);
+
+      // Extract ZIP contents
+      const zip = new AdmZip(zipBuffer);
+      const zipEntry = zip.getEntry(filePath);
+
+      if (!zipEntry) {
+        throw new NotFoundException(`File not found in ZIP: ${filePath}`);
+      }
+
+      if (zipEntry.isDirectory) {
+        throw new BadRequestException('Cannot extract a directory');
+      }
+
+      // Extract the specific file
+      const fileBuffer = zip.readFile(zipEntry);
+      
+      if (!fileBuffer) {
+        throw new BadRequestException('Failed to read file from ZIP');
+      }
+      
+      const mimeType = mime.lookup(filePath) || 'application/octet-stream';
+
+      this.logger.log(`✅ Extracted file: ${filePath}, size: ${fileBuffer.length} bytes`);
+
+      return {
+        buffer: fileBuffer,
+        filename: zipEntry.name,
+        mimeType,
+        size: zipEntry.header.size,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error(`❌ Failed to extract file from ZIP: ${error.message}`);
+      throw new BadRequestException(`Failed to extract file from ZIP: ${error.message}`);
+    }
   }
 }
