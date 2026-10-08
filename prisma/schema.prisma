@@ -189,6 +189,11 @@ model Project {
   youtubeVideoUrl String?
   basePrice     Float?
   currency      String          @default("USD")
+  
+  // Soft Delete
+  isDeleted     Boolean         @default(false)
+  deletedAt     DateTime?
+  deletedBy     String?
 
   // relations
   documentTypes ProjectDocumentType[]

@@ -569,4 +569,73 @@ export class ProjectsController {
       dto.youtubeVideoUrl,
     );
   }
+
+  @Get('deleted')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ResponseMessage('Deleted projects retrieved successfully')
+  @ApiOperation({
+    summary: 'List all soft-deleted projects',
+    description:
+      'Retrieve all projects that have been soft-deleted (can be restored). Requires admin authentication.',
+  })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiOkResponse({
+    description: 'Paginated list of deleted projects',
+  })
+  listDeleted(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+  ) {
+    return this.projectsService.listDeleted(page, limit);
+  }
+
+  @Post('identifier/:identifier/restore')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ResponseMessage('Project restored successfully')
+  @ApiOperation({
+    summary: 'Restore a soft-deleted project',
+    description:
+      'Restores a soft-deleted project back to active status and publishes it. Requires admin authentication.',
+  })
+  @ApiParam({
+    name: 'identifier',
+    description: 'Project MongoDB ID or slug',
+    example: 'modern-family-villa or 65f34e7e0a2b3c4d5e6f7890',
+  })
+  @ApiOkResponse({
+    description: 'Project restored successfully',
+  })
+  @ApiNotFoundResponse({
+    description: 'Deleted project not found with the given identifier',
+  })
+  restore(@Param('identifier') identifier: string) {
+    return this.projectsService.restore(identifier);
+  }
+
+  @Delete('identifier/:identifier/permanent')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ResponseMessage('Project permanently deleted')
+  @ApiOperation({
+    summary: 'Permanently delete a project (cannot be restored)',
+    description:
+      'Permanently deletes a project and all its associated data from the database. This action CANNOT be undone. Requires admin authentication.',
+  })
+  @ApiParam({
+    name: 'identifier',
+    description: 'Project MongoDB ID or slug',
+    example: 'modern-family-villa or 65f34e7e0a2b3c4d5e6f7890',
+  })
+  @ApiOkResponse({
+    description: 'Project permanently deleted',
+  })
+  @ApiNotFoundResponse({
+    description: 'Project not found with the given identifier',
+  })
+  permanentlyDelete(@Param('identifier') identifier: string) {
+    return this.projectsService.permanentlyDelete(identifier);
+  }
 }

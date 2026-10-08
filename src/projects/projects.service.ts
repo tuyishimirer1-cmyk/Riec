@@ -13,6 +13,8 @@ import { generateSlug, generateUniqueSlug } from '../common/utils/slug.util';
 
 @Injectable()
 export class ProjectsService {
+  private readonly logger = new Logger(ProjectsService.name);
+  
   constructor(private readonly prisma: PrismaService) {}
 
   private parseIncludeQuery(include?: string) {
@@ -172,6 +174,7 @@ export class ProjectsService {
       type?: ProjectType;
       category?: ProjectCategory;
       isPublished?: boolean;
+      includeDeleted?: boolean;
     },
     page = 1,
     limit = 20,
@@ -179,6 +182,11 @@ export class ProjectsService {
   ) {
     const { skip, take, meta } = paginate(page, limit);
     const where: any = {};
+
+    // Exclude soft-deleted projects by default
+    if (!filters.includeDeleted) {
+      where.isDeleted = false;
+    }
 
     // Default to published-only for public views; omit filter when explicitly undefined
     if (filters.isPublished !== undefined) {
@@ -327,33 +335,118 @@ export class ProjectsService {
   async remove(identifier: string) {
     const project = await this.findByIdentifier(identifier);
     
+    this.logger.log(`🗑️ Soft-deleting project: ${project.title} (${project.id})`);
+    
+    // Soft delete instead of hard delete
+    await this.prisma.project.update({
+      where: { id: project.id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        isPublished: false, // Also unpublish when deleting
+      },
+    });
+    
+    this.logger.log(`✅ Project ${project.title} soft-deleted successfully!`);
+  }
+
+  async permanentlyDelete(identifier: string) {
+    const project = await this.findByIdentifier(identifier);
+    
+    this.logger.log(`🗑️ PERMANENTLY deleting project: ${project.title} (${project.id})`);
+    
     // Delete all related data in a transaction
     await this.prisma.$transaction(async (tx) => {
-      // Delete project services
+      this.logger.log('  1️⃣ Deleting project services...');
       await tx.projectService.deleteMany({ where: { projectId: project.id } });
       
-      // Delete project images
+      this.logger.log('  2️⃣ Deleting project images...');
       await tx.projectImage.deleteMany({ where: { projectId: project.id } });
       
-      // Delete project pricing tiers (and their related data)
+      this.logger.log('  3️⃣ Deleting project pricing tiers...');
       await tx.projectPriceTier.deleteMany({ where: { projectId: project.id } });
       
-      // Delete project assets
+      this.logger.log('  4️⃣ Deleting project assets...');
       await tx.projectAsset.deleteMany({ where: { projectId: project.id } });
       
-      // Delete project assignments
+      this.logger.log('  5️⃣ Deleting project assignments...');
       await tx.projectAssignment.deleteMany({ where: { projectId: project.id } });
       
-      // Delete favorites
+      this.logger.log('  6️⃣ Deleting favorites...');
       await tx.favorite.deleteMany({ where: { projectId: project.id } });
       
-      // Delete purchases (keep for records or delete - you decide)
-      // For now, we'll delete them to allow project deletion
+      this.logger.log('  7️⃣ Deleting document types...');
+      await tx.projectDocumentType.deleteMany({ where: { projectId: project.id } });
+      
+      this.logger.log('  8️⃣ Deleting purchases...');
       await tx.purchase.deleteMany({ where: { projectId: project.id } });
       
-      // Finally, delete the project itself
+      this.logger.log('  9️⃣ Deleting the project itself...');
       await tx.project.delete({ where: { id: project.id } });
+      
+      this.logger.log(`✅ Project ${project.title} permanently deleted!`);
     });
+  }
+
+  async restore(identifier: string) {
+    this.logger.log(`♻️ Restoring project: ${identifier}`);
+    
+    // Find project including soft-deleted ones
+    const project = await this.prisma.project.findFirst({
+      where: {
+        OR: [
+          { id: identifier },
+          { slug: identifier },
+        ],
+        isDeleted: true,
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Deleted project not found');
+    }
+
+    this.logger.log(`✅ Found deleted project: ${project.title}`);
+
+    // Restore the project
+    const restored = await this.prisma.project.update({
+      where: { id: project.id },
+      data: {
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+        isPublished: true, // Publish when restoring
+      },
+      include: {
+        services: {
+          include: {
+            service: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`✅ Project ${project.title} restored successfully!`);
+    return restored;
+  }
+
+  async listDeleted(page = 1, limit = 20) {
+    const { skip, take, meta } = paginate(page, limit);
+    
+    const [data, total] = await Promise.all([
+      this.prisma.project.findMany({
+        where: { isDeleted: true },
+        include: {
+          images: { orderBy: { order: 'asc' }, take: 1 },
+        },
+        orderBy: { deletedAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.project.count({ where: { isDeleted: true } }),
+    ]);
+
+    return { data, total, meta: meta(total) };
   }
 
   async publish(identifier: string) {
