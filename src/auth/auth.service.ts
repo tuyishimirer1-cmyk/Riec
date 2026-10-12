@@ -37,6 +37,36 @@ export class AuthService {
     return admin;
   }
 
+  /**
+   * Verify password for current authenticated user
+   * Used for confirming sensitive operations
+   */
+  async verifyPassword(userId: string, password: string): Promise<boolean> {
+    if (!userId || !password) {
+      throw new UnauthorizedException('User ID and password are required');
+    }
+
+    const user = await (this.prisma as any).user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, passwordHash: true, role: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('Password not set for this user');
+    }
+
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    return true;
+  }
+
   async login(email: string, password: string) {
     const admin = await this.validateAdmin(email, password);
 

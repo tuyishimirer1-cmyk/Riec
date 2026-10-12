@@ -209,6 +209,51 @@ export class AuthController {
     return this.authService.promoteToAdmin(user?.userId);
   }
 
+  @Post('verify-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ResponseMessage('Password verified successfully')
+  @ApiOperation({
+    summary: 'Verify current user password',
+    description: 'Verify the password for the currently authenticated user. Used for confirming sensitive operations like deleting projects.',
+  })
+  @ApiBody({
+    description: 'Password to verify',
+    schema: {
+      type: 'object',
+      properties: {
+        password: {
+          type: 'string',
+          example: 'SecurePass123!',
+          description: 'Current user password to verify',
+        },
+      },
+      required: ['password'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Password verified successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Password verified successfully',
+        data: { valid: true },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid password or user not authenticated',
+  })
+  async verifyPassword(
+    @Req() req: Request,
+    @Body('password') password: string,
+  ) {
+    const user = (req as any).user as { userId?: string } | undefined;
+    const isValid = await this.authService.verifyPassword(user?.userId, password);
+    return { valid: isValid };
+  }
+
   // TODO: Enable Firebase authentication when Firebase credentials are configured
   // @Post('firebase')
   // @ResponseMessage('Firebase authentication successful')
