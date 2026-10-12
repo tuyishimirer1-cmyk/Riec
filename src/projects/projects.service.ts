@@ -188,11 +188,13 @@ export class ProjectsService {
       where.isDeleted = false;
     }
 
-    // Default to published-only for public views; omit filter when explicitly undefined
+    // Apply isPublished filter
+    // Controller ensures: published='all' → isPublished: undefined
+    //                    published='true' → isPublished: true  
+    //                    published='false' → isPublished: false
+    // When undefined is passed explicitly (from 'all'), we don't filter
     if (filters.isPublished !== undefined) {
       where.isPublished = filters.isPublished;
-    } else {
-      where.isPublished = true;
     }
 
     if (filters.service) {
