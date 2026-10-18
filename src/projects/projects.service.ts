@@ -377,13 +377,10 @@ export class ProjectsService {
       this.logger.log('  6️⃣ Deleting favorites...');
       await tx.favorite.deleteMany({ where: { projectId: project.id } });
       
-      this.logger.log('  7️⃣ Deleting document types...');
-      await tx.projectDocumentType.deleteMany({ where: { projectId: project.id } });
-      
-      this.logger.log('  8️⃣ Deleting purchases...');
+      this.logger.log('  7️⃣ Deleting purchases...');
       await tx.purchase.deleteMany({ where: { projectId: project.id } });
       
-      this.logger.log('  9️⃣ Deleting the project itself...');
+      this.logger.log('  8️⃣ Deleting the project itself...');
       await tx.project.delete({ where: { id: project.id } });
       
       this.logger.log(`✅ Project ${project.title} permanently deleted!`);

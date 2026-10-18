@@ -250,7 +250,8 @@ export class AuthController {
     @Body('password') password: string,
   ) {
     const user = (req as any).user as { userId?: string } | undefined;
-    const isValid = await this.authService.verifyPassword(user?.userId, password);
+    const userId = user?.userId || '';
+    const isValid = await this.authService.verifyPassword(userId, password);
     return { valid: isValid };
   }
 
