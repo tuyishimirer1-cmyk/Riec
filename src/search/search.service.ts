@@ -63,6 +63,7 @@ export class SearchService {
       type?: string;
       location?: string;
       featured?: boolean;
+      isPublished?: boolean;
     },
     page = 1,
     limit = 20,
@@ -71,13 +72,24 @@ export class SearchService {
     const { skip, take, meta } = paginate(page, limit);
 
     const where: any = {
-      isPublished: true,
       OR: [
         { title: { contains: query, mode: 'insensitive' } },
         { description: { contains: query, mode: 'insensitive' } },
         { location: { contains: query, mode: 'insensitive' } },
       ],
     };
+
+    // Apply isPublished filter (same logic as projects.service.ts)
+    // Controller ensures: published='all' → isPublished: undefined
+    //                    published='true' → isPublished: true  
+    //                    published='false' → isPublished: false
+    // When undefined is passed explicitly (from 'all'), we don't filter
+    if (filters.isPublished !== undefined) {
+      where.isPublished = filters.isPublished;
+    } else {
+      // Default: only published projects for public search
+      where.isPublished = true;
+    }
 
     if (filters.category) where.category = filters.category as ProjectCategory;
     if (filters.type) where.type = filters.type as ProjectType;

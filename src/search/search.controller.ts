@@ -147,6 +147,13 @@ export class SearchController {
     description: 'Filter by featured status - use "true" or "false"',
   })
   @ApiQuery({
+    name: 'published',
+    required: false,
+    example: 'true',
+    description:
+      'Filter by publish status: "true" (published only, default), "false" (drafts only), or "all" (all projects)',
+  })
+  @ApiQuery({
     name: 'page',
     required: false,
     example: 1,
@@ -193,6 +200,7 @@ export class SearchController {
     @Query('type') type?: string,
     @Query('location') location?: string,
     @Query('featured') featured?: string,
+    @Query('published') published?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
@@ -203,6 +211,12 @@ export class SearchController {
         type,
         location,
         featured: featured === 'true' ? true : undefined,
+        isPublished:
+          published === 'all'
+            ? undefined
+            : published === 'false'
+              ? false
+              : true, // default: published only
       },
       Number(page),
       Number(limit),
