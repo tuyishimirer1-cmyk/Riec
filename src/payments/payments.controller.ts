@@ -39,43 +39,6 @@ class InitProjectCheckoutDto {
   phone: string;
 }
 
-class InitPawapayCheckoutDto {
-  @IsString()
-  @ApiProperty({ example: '65f34e7e0a2b3c4d5e6f7890' })
-  projectId: string;
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({ 
-    example: '65f34e7e0a2b3c4d5e6f7000',
-    required: false,
-    description: 'Optional tier ID. If not provided, project basePrice will be used.'
-  })
-  tierId?: string;
-
-  @IsEmail()
-  @ApiProperty({ example: 'customer@example.com' })
-  email: string;
-
-  @IsString()
-  @ApiProperty({ example: 'John Doe' })
-  fullName: string;
-
-  @IsString()
-  @ApiProperty({ example: '0788123456', description: 'Rwanda phone number in format 07XXXXXXXX or 2507XXXXXXXX' })
-  phone: string;
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({ 
-    example: 'MTN_MOMO_RWA',
-    required: false,
-    enum: ['MTN_MOMO_RWA', 'AIRTEL_OAPI_RWA'],
-    description: 'Mobile money operator. Auto-detected from phone if not provided.'
-  })
-  correspondent?: 'MTN_MOMO_RWA' | 'AIRTEL_OAPI_RWA';
-}
-
 @ApiTags('Payment Endpoints')
 @Controller('payments')
 export class PaymentsController {
@@ -104,33 +67,6 @@ export class PaymentsController {
   })
   initProjectCheckout(@Body() dto: InitProjectCheckoutDto) {
     return this.paymentsService.initProjectCheckout(dto);
-  }
-
-  @Post('pawapay-checkout')
-  @ResponseMessage('PawaPay checkout initialized successfully')
-  @ApiOperation({
-    summary: 'Initialize PawaPay mobile money checkout',
-    description:
-      'Initiates a PawaPay deposit (mobile money collection) for purchasing a project. Customer receives USSD prompt on their phone to complete payment.',
-  })
-  @ApiOkResponse({
-    description: 'Returns deposit ID and status',
-    schema: {
-      example: {
-        depositId: 'f4401bd2-1568-4140-bf2d-eb77d2b2b639',
-        status: 'ACCEPTED',
-        purchaseId: '65f34e7e0a2b3c4d5e6f7890',
-        message: 'Check your phone to complete payment',
-        correspondent: 'MTN_MOMO_RWA',
-      },
-    },
-  })
-  @ApiBadRequestResponse({
-    description:
-      'Validation error or payment initialization failed',
-  })
-  initPawapayCheckout(@Body() dto: InitPawapayCheckoutDto) {
-    return this.paymentsService.initPawapayCheckout(dto);
   }
 
   @Post('webhook/flutterwave')
@@ -164,17 +100,6 @@ export class PaymentsController {
   })
   handleWebhook(@Body() body: any, @Req() req: any, @Headers('x-webhook-signature') signature?: string) {
     return this.paymentsService.handleWebhook(body, req.rawBody, signature);
-  }
-
-  @Post('webhook/pawapay')
-  @ApiExcludeEndpoint()
-  @ApiOperation({
-    summary: 'PawaPay webhook handler',
-    description:
-      'Webhook endpoint for receiving deposit status updates from PawaPay. This endpoint is excluded from public API documentation.',
-  })
-  handlePawapayWebhook(@Body() body: any, @Headers('x-pawapay-signature') signature?: string) {
-    return this.paymentsService.handlePawapayWebhook(body, signature);
   }
 
   @Post('manual-process/:reference')
