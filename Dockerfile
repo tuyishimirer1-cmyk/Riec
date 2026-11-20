@@ -40,7 +40,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/public ./public
-COPY package.json ./
+# Copy package files (including lockfile)
+COPY package.json yarn.lock ./
 
 # Remove devDependencies (lighter runtime)
 RUN yarn install --production --frozen-lockfile --ignore-scripts && yarn cache clean
