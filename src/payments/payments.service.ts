@@ -452,6 +452,203 @@ export class PaymentsService {
     };
   }
 
+  async initPawaPayCheckout(input: {
+    projectId: string;
+    tierId?: string;
+    email: string;
+    fullName: string;
+    phone: string;
+  }) {
+    const pawapayToken = process.env.PAWAPAY_API_TOKEN;
+    const pawapayBaseUrl = process.env.PAWAPAY_BASE_URL || 'https://api.sandbox.pawapay.io';
+    
+    if (!pawapayToken) {
+      throw new BadRequestException('PawaPay not configured');
+    }
+
+    // Get project and validate
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(input.projectId);
+    const project = await this.prisma.project.findUnique({
+      where: isObjectId ? { id: input.projectId } : { slug: input.projectId },
+      include: { pricingTiers: true },
+    });
+    
+    if (!project || !project.purchasable) {
+      throw new BadRequestException('Project not purchasable');
+    }
+
+    let amount: number;
+    let currency: string;
+    let tierId: string | null = null;
+
+    // Determine price from tier or base price
+    if (input.tierId && input.tierId !== 'default') {
+      const tier = project.pricingTiers.find(
+        (t) => t.id === input.tierId && t.isActive,
+      );
+      if (!tier) {
+        throw new BadRequestException('Invalid tier');
+      }
+      amount = tier.amount;
+      currency = tier.currency;
+      tierId = tier.id;
+    } else {
+      if (!project.basePrice) {
+        throw new BadRequestException('Project has no base price');
+      }
+      amount = project.basePrice;
+      currency = project.currency || 'RWF';
+      tierId = null;
+    }
+
+    // Convert to RWF for PawaPay
+    if (currency !== 'RWF') {
+      amount = currency === 'USD' ? amount * 1300 : amount;
+      currency = 'RWF';
+    }
+
+    // Normalize phone to 250XXXXXXXXX format
+    const phone = this.normalizeRwandaPhone(input.phone);
+
+    // Create purchase record
+    const purchase = await this.prisma.purchase.create({
+      data: {
+        projectId: project.id,
+        tierId: tierId,
+        email: input.email,
+        fullName: input.fullName,
+        amount: amount,
+        currency: currency,
+        flutterwaveRef: '', // Will be updated with PawaPay depositId
+      },
+    });
+
+    const depositId = `RIEC-${purchase.id}-${Date.now()}`;
+
+    // Initiate PawaPay deposit
+    try {
+      const response = await axios.post(
+        `${pawapayBaseUrl}/deposits`,
+        {
+          depositId: depositId,
+          amount: amount.toString(),
+          currency: 'RWF',
+          correspondent: 'MTN_MOMO_RWA', // Default to MTN (can be dynamic later)
+          payer: {
+            type: 'MSISDN',
+            address: {
+              value: phone,
+            },
+          },
+          customerTimestamp: new Date().toISOString(),
+          statementDescription: `RIEC - ${project.title}`,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${pawapayToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      // Update purchase with PawaPay reference
+      await this.prisma.purchase.update({
+        where: { id: purchase.id },
+        data: { flutterwaveRef: depositId },
+      });
+
+      return {
+        depositId: depositId,
+        status: response.data.status || 'SUBMITTED',
+        message: 'Payment initiated. Customer will receive USSD push notification.',
+      };
+    } catch (error) {
+      console.error('PawaPay API Error:', error.response?.data || error.message);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Failed to initiate PawaPay payment',
+      );
+    }
+  }
+
+  async handlePawaPayWebhook(body: any) {
+    try {
+      console.log('📞 PawaPay Webhook received:', JSON.stringify(body, null, 2));
+
+      const { depositId, status, failureReason } = body;
+
+      if (!depositId) {
+        console.warn('⚠️ PawaPay webhook missing depositId');
+        return { success: false };
+      }
+
+      // Find purchase by depositId (stored in flutterwaveRef)
+      const purchase = await this.prisma.purchase.findFirst({
+        where: { flutterwaveRef: depositId },
+        include: { 
+          project: { include: { assets: true } },
+          tier: true,
+        },
+      });
+
+      if (!purchase) {
+        console.warn(`⚠️ Purchase not found for depositId: ${depositId}`);
+        return { success: false };
+      }
+
+      // Update purchase status based on PawaPay status
+      if (status === 'COMPLETED') {
+        console.log(`✅ Payment COMPLETED for ${depositId}`);
+
+        // Generate download token
+        const downloadToken = `dl_${randomBytes(16).toString('hex')}`;
+        const tokenExpiry = new Date();
+        tokenExpiry.setDate(tokenExpiry.getDate() + 30); // 30 days validity
+
+        // Update purchase
+        await this.prisma.purchase.update({
+          where: { id: purchase.id },
+          data: {
+            status: 'COMPLETED',
+            downloadToken: downloadToken,
+            downloadTokenExpiry: tokenExpiry,
+          },
+        });
+
+        // Send confirmation email
+        try {
+          await this.emailService.sendPurchaseConfirmation({
+            to: purchase.email,
+            customerName: purchase.fullName,
+            projectName: purchase.project.title,
+            amount: purchase.amount,
+            currency: purchase.currency,
+            downloadToken: downloadToken,
+          });
+          console.log(`📧 Confirmation email sent to ${purchase.email}`);
+        } catch (emailError) {
+          console.error('Failed to send email:', emailError);
+        }
+
+        return { success: true, status: 'completed' };
+      } else if (status === 'FAILED') {
+        console.log(`❌ Payment FAILED for ${depositId}: ${failureReason?.message || 'Unknown'}`);
+
+        await this.prisma.purchase.update({
+          where: { id: purchase.id },
+          data: { status: 'FAILED' },
+        });
+
+        return { success: true, status: 'failed' };
+      }
+
+      // For other statuses (SUBMITTED, ACCEPTED, etc.), just acknowledge
+      return { success: true, status: 'pending' };
+    } catch (error) {
+      console.error('❌ PawaPay webhook processing error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   private normalizeRwandaPhone(phone: string): string {
     const cleaned = phone.replace(/\s+/g, '').replace(/[-()]/g, '');
 

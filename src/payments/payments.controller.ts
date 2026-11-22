@@ -102,6 +102,38 @@ export class PaymentsController {
     return this.paymentsService.handleWebhook(body, req.rawBody, signature);
   }
 
+  @Post('pawapay-checkout')
+  @ResponseMessage('PawaPay checkout initialized successfully')
+  @ApiOperation({
+    summary: 'Initialize PawaPay mobile money checkout',
+    description:
+      'Initiates a mobile money payment via PawaPay (MTN, Airtel). Customer receives USSD push notification instantly.',
+  })
+  @ApiOkResponse({
+    description: 'Returns deposit ID and status',
+    schema: {
+      example: {
+        depositId: 'dep-abc123',
+        status: 'SUBMITTED',
+        message: 'Payment initiated. Customer will receive USSD push.',
+      },
+    },
+  })
+  initPawaPayCheckout(@Body() dto: InitProjectCheckoutDto) {
+    return this.paymentsService.initPawaPayCheckout(dto);
+  }
+
+  @Post('webhook/pawapay')
+  @ApiExcludeEndpoint()
+  @ApiOperation({
+    summary: 'PawaPay webhook handler',
+    description:
+      'Webhook endpoint for receiving payment status updates from PawaPay.',
+  })
+  handlePawaPayWebhook(@Body() body: any) {
+    return this.paymentsService.handlePawaPayWebhook(body);
+  }
+
   @Post('manual-process/:reference')
   @ResponseMessage('Payment processed manually')
   @ApiOperation({
