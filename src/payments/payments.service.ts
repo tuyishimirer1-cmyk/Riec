@@ -459,8 +459,8 @@ export class PaymentsService {
     fullName: string;
     phone: string;
   }) {
-    const pawapayToken = process.env.PAWAPAY_API_TOKEN;
-    const pawapayBaseUrl = process.env.PAWAPAY_BASE_URL || 'https://api.sandbox.pawapay.io';
+    const pawapayToken = process.env.PAWAPAY_API_TOKEN?.trim();
+    const pawapayBaseUrl = process.env.PAWAPAY_BASE_URL?.trim() || 'https://api.sandbox.pawapay.io';
     
     if (!pawapayToken) {
       throw new BadRequestException('PawaPay not configured');
