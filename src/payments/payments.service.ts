@@ -620,7 +620,7 @@ export class PaymentsService {
             to: purchase.email,
             customerName: purchase.fullName,
             projectName: purchase.project.title,
-            amount: purchase.amount,
+            amount: purchase.amount.toString(),
             currency: purchase.currency,
             downloadToken: downloadToken,
           });

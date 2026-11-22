@@ -353,20 +353,21 @@ model JobApplication {
 }
 
 model Purchase {
-  id             String            @id @default(auto()) @map("_id") @db.ObjectId
-  projectId      String            @db.ObjectId
-  project        Project           @relation("ProjectPurchases", fields: [projectId], references: [id])
-  tierId         String?           @db.ObjectId
-  tier           ProjectPriceTier? @relation("TierPurchases", fields: [tierId], references: [id])
-  email          String
-  fullName       String
-  flutterwaveRef String
-  amount         Float
-  currency       String
-  status         PurchaseStatus    @default(PENDING)
-  downloadToken  String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id                  String            @id @default(auto()) @map("_id") @db.ObjectId
+  projectId           String            @db.ObjectId
+  project             Project           @relation("ProjectPurchases", fields: [projectId], references: [id])
+  tierId              String?           @db.ObjectId
+  tier                ProjectPriceTier? @relation("TierPurchases", fields: [tierId], references: [id])
+  email               String
+  fullName            String
+  flutterwaveRef      String
+  amount              Float
+  currency            String
+  status              PurchaseStatus    @default(PENDING)
+  downloadToken       String?
+  downloadTokenExpiry DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   @@index([projectId])
   @@index([tierId])
