@@ -608,7 +608,7 @@ export class PaymentsService {
         await this.prisma.purchase.update({
           where: { id: purchase.id },
           data: {
-            status: 'COMPLETED',
+            status: 'SUCCESS',
             downloadToken: downloadToken,
             downloadTokenExpiry: tokenExpiry,
           },
@@ -616,7 +616,7 @@ export class PaymentsService {
 
         // Send confirmation email
         try {
-          await this.emailService.sendPurchaseConfirmation({
+          await this.emailService.sendProjectPurchaseEmail({
             to: purchase.email,
             customerName: purchase.fullName,
             projectName: purchase.project.title,
