@@ -621,8 +621,8 @@ export class PaymentsService {
             customerName: purchase.fullName,
             projectName: purchase.project.title,
             amount: purchase.amount.toString(),
-            currency: purchase.currency,
             downloadToken: downloadToken,
+            transactionId: depositId,
           });
           console.log(`📧 Confirmation email sent to ${purchase.email}`);
         } catch (emailError) {
